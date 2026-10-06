@@ -1,4 +1,9 @@
-"""Small offline sanity metric on a deterministic synthetic preference split."""
+"""Deterministic leave-one-out ranking check on bundled synthetic preferences."""
+import sys
+from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+
 from app.recommender import recommender
 
 HISTORY = {
@@ -8,13 +13,19 @@ HISTORY = {
     "user_d": [13, 14, 16],
 }
 
-hits = covered = total = 0
+hits = 0
+recommended = set()
+cutoff = 5
 for history in HISTORY.values():
     held_out, train = history[-1], history[:-1]
-    recs = recommender.recommend(train, limit=5)
+    recs = recommender.recommend(train, limit=cutoff)
     ids = {movie["id"] for movie in recs}
     hits += held_out in ids
-    covered += len(ids)
-    total += 5
-print(f"precision@5: {hits / (len(HISTORY) * 5):.3f}")
-print(f"catalog coverage@5: {covered / len(recommender.movies):.3f}")
+    recommended.update(ids)
+precision_at_k = hits / (len(HISTORY) * cutoff)
+hit_rate_at_k = hits / len(HISTORY)
+catalog_coverage_at_k = len(recommended) / len(recommender.movies)
+print(f"users evaluated: {len(HISTORY)}")
+print(f"precision@{cutoff}: {precision_at_k:.3f}")
+print(f"hit rate@{cutoff}: {hit_rate_at_k:.3f}")
+print(f"catalog coverage@{cutoff}: {catalog_coverage_at_k:.3f} ({len(recommended)}/{len(recommender.movies)})")

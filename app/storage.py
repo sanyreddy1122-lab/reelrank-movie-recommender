@@ -16,11 +16,25 @@ def connect() -> sqlite3.Connection:
 
 def initialize() -> None:
     with connect() as db:
+        schema = db.execute("SELECT sql FROM sqlite_master WHERE type='table' AND name='feedback'").fetchone()
+        if schema and "unwatchlist" not in schema[0]:
+            # Rebuild the small event table to extend its action constraint while preserving history.
+            db.execute("DROP INDEX IF EXISTS idx_feedback_user_movie")
+            db.execute("ALTER TABLE feedback RENAME TO feedback_legacy")
+            db.execute("""CREATE TABLE feedback (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                user_id TEXT NOT NULL,
+                movie_id INTEGER NOT NULL,
+                action TEXT NOT NULL CHECK(action IN ('like','dislike','watchlist','unlike','unwatchlist')),
+                created_at TEXT NOT NULL
+            )""")
+            db.execute("INSERT INTO feedback(id,user_id,movie_id,action,created_at) SELECT id,user_id,movie_id,action,created_at FROM feedback_legacy")
+            db.execute("DROP TABLE feedback_legacy")
         db.execute("""CREATE TABLE IF NOT EXISTS feedback (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             user_id TEXT NOT NULL,
             movie_id INTEGER NOT NULL,
-            action TEXT NOT NULL CHECK(action IN ('like','dislike','watchlist','unlike')),
+            action TEXT NOT NULL CHECK(action IN ('like','dislike','watchlist','unlike','unwatchlist')),
             created_at TEXT NOT NULL
         )""")
         db.execute("CREATE INDEX IF NOT EXISTS idx_feedback_user_movie ON feedback(user_id, movie_id, id)")

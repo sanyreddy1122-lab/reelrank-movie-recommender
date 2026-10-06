@@ -18,7 +18,7 @@ storage.initialize()
 class Feedback(BaseModel):
     movie_id: int
     user_id: str = Field(default="demo", min_length=1, max_length=80, pattern="^[a-zA-Z0-9_-]+$")
-    action: str = Field(pattern="^(like|dislike|watchlist|unlike)$")
+    action: str = Field(pattern="^(like|dislike|watchlist|unlike|unwatchlist)$")
 
 
 @app.get("/", include_in_schema=False)
@@ -51,7 +51,7 @@ def _recommend(liked: str, limit: int, genre: str, user_id: str | None = None):
     if user_id:
         pref = storage.preferences(user_id)
         ids = list(dict.fromkeys(ids + pref["liked"]))
-        excluded = pref["disliked"]
+        excluded = list(dict.fromkeys(pref["disliked"] + pref["watchlist"]))
     return recommender.recommend(ids, limit, genre or None, excluded)
 
 
@@ -68,6 +68,12 @@ def user_recommendations(user_id: str, limit: int = Query(10, ge=1, le=20), genr
 @app.get("/api/users/{user_id}/preferences")
 def user_preferences(user_id: str):
     return storage.preferences(user_id)
+
+
+@app.get("/api/users/{user_id}/watchlist")
+def user_watchlist(user_id: str):
+    ids = storage.preferences(user_id)["watchlist"]
+    return [recommender.by_id[mid] for mid in ids if mid in recommender.by_id]
 
 
 @app.post("/api/feedback", status_code=202)
