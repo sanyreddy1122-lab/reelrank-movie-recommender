@@ -1,10 +1,17 @@
 """Durable local feedback storage; SQLite can be swapped for a managed DB later."""
+import base64
+import hashlib
+import os
+import secrets
 import sqlite3
+import uuid
 from datetime import datetime, timezone
 from pathlib import Path
 
 
 DB_PATH = Path(__file__).resolve().parents[1] / "data" / "feedback.sqlite3"
+SESSION_SECRET_PATH = DB_PATH.parent / "session.key"
+PASSWORD_ITERATIONS = 310_000
 
 
 def connect() -> sqlite3.Connection:
@@ -38,6 +45,85 @@ def initialize() -> None:
             created_at TEXT NOT NULL
         )""")
         db.execute("CREATE INDEX IF NOT EXISTS idx_feedback_user_movie ON feedback(user_id, movie_id, id)")
+        db.execute("""CREATE TABLE IF NOT EXISTS users (
+            id TEXT PRIMARY KEY,
+            email TEXT NOT NULL UNIQUE COLLATE NOCASE,
+            display_name TEXT NOT NULL,
+            password_hash TEXT NOT NULL,
+            created_at TEXT NOT NULL
+        )""")
+
+
+def session_secret() -> bytes:
+    """Get a stable local signing key; deployments can supply a shared env secret."""
+    configured = os.environ.get("REELRANK_SECRET_KEY")
+    if configured:
+        return configured.encode("utf-8")
+    SESSION_SECRET_PATH.parent.mkdir(parents=True, exist_ok=True)
+    try:
+        with SESSION_SECRET_PATH.open("xb") as secret_file:
+            secret_file.write(secrets.token_bytes(32))
+    except FileExistsError:
+        pass
+    return SESSION_SECRET_PATH.read_bytes()
+
+
+def _password_hash(password: str, salt: bytes) -> bytes:
+    return hashlib.pbkdf2_hmac("sha256", password.encode("utf-8"), salt, PASSWORD_ITERATIONS)
+
+
+def create_user(display_name: str, email: str, password: str) -> dict | None:
+    user_id = str(uuid.uuid4())
+    salt = secrets.token_bytes(16)
+    digest = _password_hash(password, salt)
+    encoded = f"pbkdf2_sha256${PASSWORD_ITERATIONS}${base64.b64encode(salt).decode()}${base64.b64encode(digest).decode()}"
+    with connect() as db:
+        try:
+            db.execute(
+                "INSERT INTO users(id,email,display_name,password_hash,created_at) VALUES(?,?,?,?,?)",
+                (user_id, email.strip().lower(), display_name.strip(), encoded, datetime.now(timezone.utc).isoformat()),
+            )
+        except sqlite3.IntegrityError:
+            return None
+    return get_user_by_id(user_id)
+
+
+def _public_user(row: sqlite3.Row | None) -> dict | None:
+    if row is None:
+        return None
+    return {"id": row["id"], "email": row["email"], "display_name": row["display_name"]}
+
+
+def get_user_by_id(user_id: str) -> dict | None:
+    with connect() as db:
+        row = db.execute("SELECT id,email,display_name FROM users WHERE id=?", (user_id,)).fetchone()
+    return _public_user(row)
+
+
+def authenticate_user(email: str, password: str) -> dict | None:
+    with connect() as db:
+        row = db.execute("SELECT * FROM users WHERE email=? COLLATE NOCASE", (email.strip().lower(),)).fetchone()
+    if row is None:
+        return None
+    try:
+        algorithm, rounds, encoded_salt, encoded_digest = row["password_hash"].split("$", 3)
+        if algorithm != "pbkdf2_sha256":
+            return None
+        salt = base64.b64decode(encoded_salt)
+        expected = base64.b64decode(encoded_digest)
+        actual = hashlib.pbkdf2_hmac("sha256", password.encode("utf-8"), salt, int(rounds))
+    except (ValueError, TypeError):
+        return None
+    if not secrets.compare_digest(actual, expected):
+        return None
+    return _public_user(row)
+
+
+def transfer_feedback(source_user_id: str, target_user_id: str) -> None:
+    if source_user_id == target_user_id:
+        return
+    with connect() as db:
+        db.execute("UPDATE feedback SET user_id=? WHERE user_id=?", (target_user_id, source_user_id))
 
 
 def record_feedback(user_id: str, movie_id: int, action: str) -> None:

@@ -22,15 +22,15 @@ The implementation represents each movie using its genres, keywords, and overvie
 1. **Catalog:** `data/movies.json` is the version-controlled demo input. Each record includes title, year, genres, keywords, overview, runtime, and rating.
 2. **Feature pipeline:** `app/recommender.py` normalizes the text fields and builds TF-IDF vectors, then uses cosine similarity to rank the catalog.
 3. **Personalization:** Likes become positive profile signals. Dislikes and watchlisted titles are excluded from future recommendation results. A user can remove a saved title or unlike a favorite.
-4. **Service:** FastAPI serves the static UI and JSON routes for health, movies, user preferences, recommendations, watchlists, feedback, and aggregate metrics.
-5. **Persistence:** SQLite stores timestamped feedback events. The latest event per user/title defines current state, preserving the event history for aggregate monitoring.
+4. **Service:** FastAPI serves the static UI and JSON routes for account registration/login, health, movies, user preferences, recommendations, watchlists, feedback, and aggregate metrics. Signed-in accounts are scoped to their own profile routes.
+5. **Persistence:** SQLite stores account records and timestamped feedback events. Passwords use salted PBKDF2 hashes; a signed HttpOnly cookie carries the session. The latest feedback event per user/title defines current state, preserving history for aggregate monitoring.
 6. **Delivery:** Docker Compose packages the API. The app also runs locally with Python and Uvicorn; the API's OpenAPI page supports endpoint inspection.
 
 ## 3. Implementation and technical skills
 
-The responsive web UI supports an expanded Explore shelf with 40 catalog titles, search across plot summaries and themes, dynamic genre filters, and sorting by rating, release year, title, or runtime. It also supports favorite selection, personalized recommendations, dismiss feedback, a persistent watchlist, movie detail dialogs, and a live API status indicator. Feedback actions use the backend API, and user preferences persist in SQLite across page refreshes for that running app instance.
+The responsive web UI supports a login/register page and an expanded Explore shelf with 40 catalog titles, search across plot summaries and themes, dynamic genre filters, and sorting by rating, release year, title, or runtime. It also supports favorite selection, personalized recommendations, dismiss feedback, a persistent watchlist, movie detail dialogs, and a live API status indicator. Feedback actions use the backend API, and account preferences persist in SQLite across page refreshes.
 
-The backend validates feedback action names and user IDs, rejects unknown movie IDs, bounds recommendation limits, and exposes `/health` and `/api/metrics`. The database initializer migrates the feedback action constraint when extending the supported actions. The current app uses a shared local SQLite file and does not include login, multi-instance database coordination, or access control; those are deployment requirements before hosting real user data.
+The backend validates feedback action names, verifies signed sessions, scopes profile access to the account, rejects unknown movie IDs, bounds recommendation limits, and exposes `/health` and `/api/metrics`. The database initializer migrates the feedback action constraint when extending the supported actions. The current app uses a shared local SQLite file without multi-instance database coordination or email verification; managed storage and an identity provider are recommended before a public production deployment.
 
 ## 4. Results and innovation
 
@@ -65,6 +65,6 @@ The project connects the user feedback loop to a persistent profile and the reco
 | --- | --- |
 | Problem definition and literature survey (20) | Problem statement, method selection rationale, and selected research references above |
 | Methodology, design, and technical approach (20) | Catalog-to-feature-to-ranking pipeline, API, feedback persistence, and delivery design |
-| Implementation and technical skills (25) | FastAPI backend, TF-IDF recommender, SQLite event store, responsive UI, Docker |
+| Implementation and technical skills (25) | FastAPI backend, signed account sessions, TF-IDF recommender, SQLite store, responsive UI, Docker |
 | Results, testing, and innovation (20) | Reproducible top-five ranking metrics, interactive feedback loop, health and metrics endpoints |
 | Presentation, documentation, and team contribution (15) | This report, README, API docs, and organized project structure |

@@ -1,0 +1,67 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="theme-color" content="#071321">
+  <title>Sign in · ReelRank</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/static/login.css">
+</head>
+<body>
+  <main class="auth-layout">
+    <section class="auth-story" aria-label="About ReelRank">
+      <a class="auth-brand" href="/"><span class="auth-brand-mark">R</span> reelrank<span>.</span></a>
+      <div class="story-copy">
+        <div class="story-eyebrow"><i></i> YOUR PERSONAL CINEMA</div>
+        <h1>Stories worth<br>staying <em>in for.</em></h1>
+        <p>Sign in to pick up where you left off. Your favorites and watchlist travel with your account.</p>
+      </div>
+      <div class="story-art" aria-hidden="true">
+        <div class="story-orb"></div>
+        <div class="story-poster story-poster-back"><span>AN UNEXPECTED JOURNEY</span><b>THE<br>OTHER<br>SIDE</b><small>A REELRANK FAVORITE</small></div>
+        <div class="story-poster story-poster-front"><span>MADE FOR YOUR MOOD</span><b>AFTER<br>THE<br>STARS</b><small>✳ &nbsp; FIND YOUR NEXT FAVORITE</small></div>
+        <div class="story-caption">✦ &nbsp; A little magic, picked for you</div>
+      </div>
+      <div class="story-foot"><span>40 films and counting</span><span>✳ &nbsp; BUILT FOR MOVIE PEOPLE</span></div>
+    </section>
+
+    <section class="auth-panel" aria-labelledby="auth-title">
+      <div class="auth-card">
+        <div class="auth-mobile-brand"><span class="auth-brand-mark">R</span> reelrank<span>.</span></div>
+        <div class="auth-kicker">YOUR NEXT MOVIE NIGHT STARTS HERE</div>
+        <h2 id="auth-title">Welcome back.</h2>
+        <p class="auth-subtitle" id="auth-subtitle">Sign in to your ReelRank account.</p>
+
+        <div class="auth-tabs" role="tablist" aria-label="Account access">
+          <button type="button" class="auth-tab active" id="login-tab" role="tab" aria-selected="true">Sign in</button>
+          <button type="button" class="auth-tab" id="register-tab" role="tab" aria-selected="false">Create account</button>
+        </div>
+
+        <form id="auth-form" novalidate>
+          <label class="auth-field" id="name-field" hidden>
+            <span>Your name</span>
+            <input id="display-name" name="display_name" type="text" autocomplete="name" maxlength="80" placeholder="What should we call you?">
+          </label>
+          <label class="auth-field">
+            <span>Email address</span>
+            <input id="email" name="email" type="email" autocomplete="email" maxlength="254" placeholder="you@example.com" required>
+          </label>
+          <label class="auth-field password-field">
+            <span>Password</span>
+            <input id="password" name="password" type="password" autocomplete="current-password" minlength="10" maxlength="128" placeholder="At least 10 characters" required>
+            <button class="password-toggle" type="button" id="password-toggle" aria-label="Show password">Show</button>
+          </label>
+          <p class="auth-error" id="auth-error" role="alert" aria-live="polite"></p>
+          <button class="auth-submit" type="submit"><span id="submit-label">Sign in</span><span aria-hidden="true">→</span></button>
+        </form>
+        <p class="auth-security"><span>✦</span> Your password is securely hashed. Your movie taste stays yours.</p>
+      </div>
+      <div class="auth-bottom">A small signal in a very big cinema. <span>✳</span></div>
+    </section>
+  </main>
+  <script src="/static/auth.js"></script>
+</body>
+</html>

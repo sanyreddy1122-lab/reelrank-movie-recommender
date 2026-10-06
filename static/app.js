@@ -20,15 +20,14 @@ const colors = {
 };
 
 let catalog = [];
-let selected = new Set(JSON.parse(localStorage.getItem('reelrank-liked') || '[]'));
+let selected = new Set();
 let watchlisted = new Set();
 let activeGenre = 'All';
 let query = '';
 let exploreGenre = 'All';
 let exploreQuery = '';
 let exploreSort = 'rating';
-const userId = localStorage.getItem('reelrank-user-id') || ((crypto.randomUUID && crypto.randomUUID()) || `guest-${Math.random().toString(36).slice(2)}`);
-localStorage.setItem('reelrank-user-id', userId);
+let userId = '';
 const $ = (selector) => document.querySelector(selector);
 
 function escapeHtml(value) {
@@ -164,7 +163,7 @@ async function sendFeedback(movieId, action) {
     const response = await fetch(`${API}/api/feedback`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ movie_id: movieId, action, user_id: userId }),
+      body: JSON.stringify({ movie_id: movieId, action }),
     });
     if (!response.ok) throw new Error('Feedback was not saved');
     if (action === 'watchlist') toast('Saved for your next movie night ✦');
@@ -185,7 +184,6 @@ async function handleAction(action, movieId) {
     const nextAction = selected.has(movieId) ? 'unlike' : 'like';
     if (!await sendFeedback(movieId, nextAction)) return;
     nextAction === 'like' ? selected.add(movieId) : selected.delete(movieId);
-    localStorage.setItem('reelrank-liked', JSON.stringify([...selected]));
     renderCatalog();
     renderExplore();
     await renderRecommendations();
@@ -233,8 +231,18 @@ async function checkHealth() {
 
 async function init() {
   renderGenres();
-  const health = await checkHealth();
   try {
+    const accountResponse = await fetch(`${API}/api/auth/me`);
+    if (accountResponse.status === 401) {
+      window.location.replace('/login');
+      return;
+    }
+    if (!accountResponse.ok) throw new Error('Could not load your account');
+    const account = await accountResponse.json();
+    userId = account.id;
+    $('#avatar-initial').textContent = account.display_name.trim().charAt(0).toUpperCase() || 'R';
+    $('#avatar-initial').title = account.display_name;
+    const health = await checkHealth();
     const [movieResponse, preferenceResponse] = await Promise.all([
       fetch(`${API}/api/movies`),
       fetch(`${API}/api/users/${userId}/preferences`),
@@ -242,24 +250,15 @@ async function init() {
     if (!movieResponse.ok || !preferenceResponse.ok) throw new Error('Could not load the app data');
     catalog = await movieResponse.json();
     const preferences = await preferenceResponse.json();
-    const persistedLikes = new Set(preferences.liked);
-    const needsLegacyMigration = localStorage.getItem('reelrank-likes-migrated') !== 'true';
-    const legacyLikes = needsLegacyMigration ? [...selected].filter((id) => !persistedLikes.has(id)) : [];
-    selected = new Set([...legacyLikes, ...persistedLikes]);
+    selected = new Set(preferences.liked);
     watchlisted = new Set(preferences.watchlist);
-    localStorage.setItem('reelrank-liked', JSON.stringify([...selected]));
-    let migrationComplete = true;
-    for (const id of legacyLikes) {
-      if (!await sendFeedback(id, 'like')) migrationComplete = false;
-    }
-    if (needsLegacyMigration && migrationComplete) localStorage.setItem('reelrank-likes-migrated', 'true');
     renderGenres();
     renderCatalog();
     renderExploreGenres();
     renderExplore();
     await Promise.all([renderRecommendations(), renderWatchlist()]);
   } catch {
-    $('#taste-grid').innerHTML = `<div class="empty">${health ? 'Could not load the movie catalog. Refresh to try again.' : 'Start the backend with <code>py -m uvicorn app.main:app --reload</code> to connect recommendations.'}</div>`;
+    $('#taste-grid').innerHTML = '<div class="empty">Could not load ReelRank. Check the API connection and refresh the page.</div>';
   }
 }
 
@@ -297,6 +296,11 @@ $('#explore-sort').addEventListener('change', (event) => {
   renderExplore();
 });
 $('#refresh').addEventListener('click', renderRecommendations);
+$('#logout-button').addEventListener('click', async () => {
+  await fetch(`${API}/api/auth/logout`, { method: 'POST' });
+  localStorage.removeItem('reelrank-user-id');
+  window.location.replace('/login');
+});
 $('#dialog-close').addEventListener('click', () => $('#movie-dialog').close());
 $('#movie-dialog').addEventListener('click', (event) => {
   if (event.target === $('#movie-dialog')) $('#movie-dialog').close();
