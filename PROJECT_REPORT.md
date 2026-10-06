@@ -28,7 +28,7 @@ The implementation represents each movie using its genres, keywords, and overvie
 
 ## 3. Implementation and technical skills
 
-The responsive web UI supports catalog search and genre filters, favorite selection, personalized recommendations, dismiss feedback, a persistent watchlist, movie detail dialogs, and a live API status indicator. All actions use the backend API, and user preferences persist in SQLite across page refreshes for that running app instance.
+The responsive web UI supports an expanded Explore shelf with 40 catalog titles, search across plot summaries and themes, dynamic genre filters, and sorting by rating, release year, title, or runtime. It also supports favorite selection, personalized recommendations, dismiss feedback, a persistent watchlist, movie detail dialogs, and a live API status indicator. Feedback actions use the backend API, and user preferences persist in SQLite across page refreshes for that running app instance.
 
 The backend validates feedback action names and user IDs, rejects unknown movie IDs, bounds recommendation limits, and exposes `/health` and `/api/metrics`. The database initializer migrates the feedback action constraint when extending the supported actions. The current app uses a shared local SQLite file and does not include login, multi-instance database coordination, or access control; those are deployment requirements before hosting real user data.
 
@@ -36,15 +36,15 @@ The backend validates feedback action names and user IDs, rejects unknown movie 
 
 ### Offline ranking check
 
-The bundled deterministic evaluation holds out one known favorite for each of four synthetic user histories and asks whether it appears among the top five results. On the 20-title demo catalog, the current model produced:
+The bundled deterministic evaluation holds out one known favorite for each of four synthetic user histories and asks whether it appears among the top five results. On the expanded 40-title demo catalog, the current model produced:
 
 | Metric | Result | Meaning |
 | --- | ---: | --- |
-| Precision@5 | 0.200 | 4 held-out hits across 20 recommendation slots |
-| Hit rate@5 | 1.000 | 4 of 4 held-out titles appeared in the top five |
-| Catalog coverage@5 | 0.600 | 12 of 20 catalog titles appeared across the lists |
+| Precision@5 | 0.100 | 2 held-out hits across 20 recommendation slots |
+| Hit rate@5 | 0.500 | 2 of 4 held-out titles appeared in the top five |
+| Catalog coverage@5 | 0.425 | 17 of 40 catalog titles appeared across the lists |
 
-These scores are a smoke-level demonstration on synthetic histories, not evidence of real-world quality. Four users are too few for statistical conclusions. Re-run `py scripts/evaluate.py` after installing dependencies to reproduce the ranking check locally. Compare future model versions on a larger, time-aware held-out dataset and report both ranking quality and catalog coverage.
+The larger catalog improves the breadth of titles to explore but makes this tiny leave-one-out ranking check harder. These scores are a smoke-level demonstration on synthetic histories, not evidence of real-world quality. Four users are too few for statistical conclusions. Re-run `py scripts/evaluate.py` after installing dependencies to reproduce the ranking check locally. Compare future model versions on a larger, time-aware held-out dataset and report both ranking quality and catalog coverage.
 
 ### Product and MLOps contribution
 

@@ -14,6 +14,9 @@ const colors = {
   Family: 'linear-gradient(145deg,#c4f47a,#43c9a6 54%,#2779a8)',
   Horror: 'linear-gradient(145deg,#ad91ff,#6553a8 54%,#1c2343)',
   Thriller: 'linear-gradient(145deg,#81b4ff,#4c5ca9 54%,#262447)',
+  Fantasy: 'linear-gradient(145deg,#a88aff,#f078bd 54%,#3e2b75)',
+  History: 'linear-gradient(145deg,#e1ba7b,#a76356 54%,#49324c)',
+  Biography: 'linear-gradient(145deg,#b6d99b,#548975 54%,#273d52)',
 };
 
 let catalog = [];
@@ -21,6 +24,9 @@ let selected = new Set(JSON.parse(localStorage.getItem('reelrank-liked') || '[]'
 let watchlisted = new Set();
 let activeGenre = 'All';
 let query = '';
+let exploreGenre = 'All';
+let exploreQuery = '';
+let exploreSort = 'rating';
 const userId = localStorage.getItem('reelrank-user-id') || ((crypto.randomUUID && crypto.randomUUID()) || `guest-${Math.random().toString(36).slice(2)}`);
 localStorage.setItem('reelrank-user-id', userId);
 const $ = (selector) => document.querySelector(selector);
@@ -60,7 +66,30 @@ function movieCard(movie, { recommended = false, watchlist = false } = {}) {
 }
 
 function renderGenres() {
-  $('#genres').innerHTML = genres.map((genre) => `<button class="genre-pill ${activeGenre === genre ? 'active' : ''}" data-genre="${genre}" aria-pressed="${activeGenre === genre}">${genre}</button>`).join('');
+  const options = ['All', ...new Set([...genres.slice(1), ...catalog.flatMap((movie) => movie.genres)])].sort((a, b) => a === 'All' ? -1 : b === 'All' ? 1 : a.localeCompare(b));
+  $('#genres').innerHTML = options.map((genre) => `<button class="genre-pill ${activeGenre === genre ? 'active' : ''}" data-genre="${escapeHtml(genre)}" aria-pressed="${activeGenre === genre}">${escapeHtml(genre)}</button>`).join('');
+}
+
+function renderExploreGenres() {
+  const options = ['All', ...new Set(catalog.flatMap((movie) => movie.genres))].sort((a, b) => a === 'All' ? -1 : b === 'All' ? 1 : a.localeCompare(b));
+  $('#explore-genres').innerHTML = options.map((genre) => `<button class="genre-pill ${exploreGenre === genre ? 'active' : ''}" data-explore-genre="${escapeHtml(genre)}" aria-pressed="${exploreGenre === genre}">${escapeHtml(genre)}</button>`).join('');
+}
+
+function renderExplore() {
+  let rows = catalog.filter((movie) => {
+    const matchesGenre = exploreGenre === 'All' || movie.genres.includes(exploreGenre);
+    const searchable = `${movie.title} ${movie.overview} ${movie.genres.join(' ')} ${movie.keywords.join(' ')}`.toLowerCase();
+    return matchesGenre && (!exploreQuery || searchable.includes(exploreQuery));
+  });
+  rows = [...rows].sort((a, b) => {
+    if (exploreSort === 'newest') return b.year - a.year || b.rating - a.rating;
+    if (exploreSort === 'title') return a.title.localeCompare(b.title);
+    if (exploreSort === 'runtime') return a.runtime - b.runtime || b.rating - a.rating;
+    return b.rating - a.rating || b.year - a.year;
+  });
+  $('#explore-grid').innerHTML = rows.map((movie) => movieCard(movie)).join('') || '<div class="empty">No movies match those filters. Try a different genre or search.</div>';
+  $('#explore-count').textContent = `${rows.length} ${rows.length === 1 ? 'film' : 'films'}`;
+  $('#explore-caption').textContent = rows.length === catalog.length ? `All ${catalog.length} stories in the ReelRank library` : `${rows.length} of ${catalog.length} films match your search`;
 }
 
 function updatePickNote() {
@@ -158,6 +187,7 @@ async function handleAction(action, movieId) {
     nextAction === 'like' ? selected.add(movieId) : selected.delete(movieId);
     localStorage.setItem('reelrank-liked', JSON.stringify([...selected]));
     renderCatalog();
+    renderExplore();
     await renderRecommendations();
   } else if (action === 'toggle-watchlist') {
     const nextAction = watchlisted.has(movieId) ? 'unwatchlist' : 'watchlist';
@@ -223,7 +253,10 @@ async function init() {
       if (!await sendFeedback(id, 'like')) migrationComplete = false;
     }
     if (needsLegacyMigration && migrationComplete) localStorage.setItem('reelrank-likes-migrated', 'true');
+    renderGenres();
     renderCatalog();
+    renderExploreGenres();
+    renderExplore();
     await Promise.all([renderRecommendations(), renderWatchlist()]);
   } catch {
     $('#taste-grid').innerHTML = `<div class="empty">${health ? 'Could not load the movie catalog. Refresh to try again.' : 'Start the backend with <code>py -m uvicorn app.main:app --reload</code> to connect recommendations.'}</div>`;
@@ -232,6 +265,7 @@ async function init() {
 
 bindActions($('#taste-grid'));
 bindActions($('#recommendations'));
+bindActions($('#explore-grid'));
 bindActions($('#watchlist-grid'));
 bindActions($('#movie-detail'));
 $('#genres').addEventListener('click', (event) => {
@@ -245,6 +279,22 @@ $('#genres').addEventListener('click', (event) => {
 $('#search').addEventListener('input', (event) => {
   query = event.target.value.trim().toLowerCase();
   renderCatalog();
+});
+$('#explore-genres').addEventListener('click', (event) => {
+  const button = event.target.closest('[data-explore-genre]');
+  if (button) {
+    exploreGenre = button.dataset.exploreGenre;
+    renderExploreGenres();
+    renderExplore();
+  }
+});
+$('#explore-search').addEventListener('input', (event) => {
+  exploreQuery = event.target.value.trim().toLowerCase();
+  renderExplore();
+});
+$('#explore-sort').addEventListener('change', (event) => {
+  exploreSort = event.target.value;
+  renderExplore();
 });
 $('#refresh').addEventListener('click', renderRecommendations);
 $('#dialog-close').addEventListener('click', () => $('#movie-dialog').close());

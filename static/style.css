@@ -54,3 +54,17 @@ body{background:radial-gradient(ellipse at 2% 25%,#ffe5d725,transparent 26%),rad
 .remove-action:hover{background:#e95683!important;border-color:#e95683!important;color:white!important}
 @media(max-width:700px){.watchlist-section{padding:55px 6%}.movie-dialog{border-radius:15px}.detail-layout{grid-template-columns:1fr}.detail-poster{min-height:210px;padding:23px}.detail-poster b{font-size:34px}.detail-copy{padding:25px 23px}.watchlist-section .section-heading{align-items:flex-start}}
 @media(max-width:420px){.topbar{padding:0 5%}.topbar nav{gap:12px;font-size:11px}.watchlist-section .movie-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+.explore-section{padding:76px 10% 80px;border-top:1px solid #4b294312;background:radial-gradient(ellipse at 100% 0%,#e9ddff70,transparent 38%),linear-gradient(180deg,#f8f4ff 0%,#fffdf9 72%)}
+.explore-section .section-heading h2{color:#2b173c}
+.explore-section .section-heading h2 em{color:#7755e8}
+.explore-tools{display:flex;align-items:center;gap:12px;margin:26px 0 16px}
+.explore-search{max-width:none}
+.sort-control{height:39px;display:flex;align-items:center;gap:9px;padding:0 11px;border:1px solid #e8dfea;border-radius:6px;background:#fff;color:#8a7b91;font-size:10px;white-space:nowrap;box-shadow:0 4px 14px #40255208}
+.sort-control select{border:0;outline:0;background:transparent;color:#6044a2;font:600 10px 'DM Sans',sans-serif;cursor:pointer}
+.sort-control:focus-within{border-color:#947bed;box-shadow:0 0 0 3px #8f76ee20}
+.explore-genres{margin:0 0 22px;max-height:68px;overflow:auto;scrollbar-width:thin;scrollbar-color:#d4c2f4 transparent}
+.explore-grid .movie-card{animation:explore-in .32s ease both}
+@keyframes explore-in{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+section[id]{scroll-margin-top:90px}
+@media(max-width:700px){.explore-section{padding:55px 6%}.explore-tools{align-items:stretch}.explore-search{min-width:0}.sort-control{padding:0 8px;gap:5px}.sort-control select{max-width:85px}.explore-section .section-heading{align-items:flex-start}}
+@media(max-width:420px){.topbar nav{gap:8px;font-size:10px}.explore-tools{flex-direction:column}.sort-control{justify-content:space-between}.explore-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}

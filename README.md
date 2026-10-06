@@ -31,6 +31,7 @@ docker compose up --build
 - `app/recommender.py` builds TF-IDF vectors from genres, keywords, and summaries and ranks by cosine similarity plus a modest quality prior.
 - `app/main.py` exposes health, catalog, user preference, recommendation, feedback, and aggregate metric endpoints. Feedback is persisted in SQLite at `data/feedback.sqlite3`; latest likes shape each user's profile, dislikes are excluded, and watchlist events are retained.
 - The browser calls the FastAPI service on the same origin. Favorites, dismissals, recommendation refreshes, movie details, and the saved Watchlist are backed by the API; watchlist actions are persisted and saved movies are excluded from recommendations.
+- The Explore shelf browses all 40 demo titles from the catalog API with search across titles and themes, dynamic genre filters, and top-rated, newest, title, or shortest sorting.
 - `scripts/evaluate.py` reports precision@k and catalog coverage on a deterministic leave-one-out split from the sample interactions.
 - Docker Compose runs the API as a container. Replace the bundled catalog with a versioned ingestion job, store model artifacts in a model registry, and add CI/CD and monitoring as the next production steps.
 - `PROJECT_REPORT.md` maps the design, research references, evaluation results, and implementation evidence to the course review rubric.
