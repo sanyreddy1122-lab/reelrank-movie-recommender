@@ -1,0 +1,8 @@
+services:
+  recommender:
+    build: .
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./data:/srv/data
+    restart: unless-stopped
