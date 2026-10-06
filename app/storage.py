@@ -9,8 +9,9 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 
-DB_PATH = Path(__file__).resolve().parents[1] / "data" / "feedback.sqlite3"
-SESSION_SECRET_PATH = DB_PATH.parent / "session.key"
+DATA_DIR = Path(os.environ.get("REELRANK_DATA_DIR", Path(__file__).resolve().parents[1] / "data")).expanduser()
+DB_PATH = DATA_DIR / "feedback.sqlite3"
+SESSION_SECRET_PATH = DATA_DIR / "session.key"
 PASSWORD_ITERATIONS = 310_000
 
 

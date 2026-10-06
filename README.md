@@ -25,6 +25,12 @@ If `py --version` is not recognized, Python is not installed or its launcher is 
 docker compose up --build
 ```
 
+## Publish a free demo on Render
+
+The repository includes a Render Blueprint in `render.yaml`. Use the [one-click Render setup](https://render.com/deploy?repo=https://github.com/sanyreddy1122-lab/reelrank-movie-recommender), sign in, connect GitHub, review the Blueprint, and deploy. Render builds the FastAPI app, checks `/health`, and deploys new `main` commits after the GitHub Actions checks pass.
+
+This Blueprint selects Render's free web-service plan. Free services can sleep when idle, and their files are temporary; demo accounts, likes, and watchlists can be cleared after a restart or deploy. Use a paid persistent disk or move account and feedback storage to a managed database for durable public use.
+
 ## MLOps lifecycle
 
 - `data/movies.json` is the versioned demo catalog.
