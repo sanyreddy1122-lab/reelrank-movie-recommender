@@ -1,6 +1,6 @@
 # ReelRank — MLOps Movie Recommender
 
-A small, runnable movie recommendation product built as an MLOps starter. It includes a FastAPI service, a content-based recommendation baseline, a cinematic streaming-style responsive interface, Docker Compose, and a path to evolve the model and data pipeline.
+A small, runnable movie recommendation product built as an MLOps starter. It includes a FastAPI service, a content-based recommendation baseline, a cinematic streaming-style responsive interface, a multilingual catalog, movie poster artwork, Docker Compose, and a path to evolve the model and data pipeline.
 
 ## Run locally on Windows
 
@@ -17,7 +17,7 @@ py -m pip install -r requirements.txt
 py -m uvicorn app.main:app --reload
 ```
 
-If `py --version` is not recognized, Python is not installed or its launcher is unavailable; install Python first. If you use PowerShell, activate with `.\.venv\Scripts\Activate.ps1` instead. Open http://localhost:8000. The app starts with a bundled sample catalog; no API keys or external data downloads are needed.
+If `py --version` is not recognized, Python is not installed or its launcher is unavailable; install Python first. If you use PowerShell, activate with `.\.venv\Scripts\Activate.ps1` instead. Open http://localhost:8000. The app starts with a bundled sample catalog; no API keys or external data downloads are needed. Movie poster thumbnails are looked up from English Wikipedia when the page loads; the built-in artwork remains as a fallback when a poster is unavailable.
 
 ## Run with Docker
 
@@ -33,7 +33,8 @@ docker compose up --build
 - Account registration and login use PBKDF2 password hashes and signed HttpOnly session cookies. The server creates a local signing key in `data/session.key` (ignored by Git); set `REELRANK_SECRET_KEY` to a shared secret when deploying multiple app instances.
 - Personalized preference, recommendation, Watchlist, and feedback routes require a valid session and only allow access to the signed-in account's profile. Catalog and health routes remain public.
 - The browser calls the FastAPI service on the same origin. Favorites, dismissals, recommendation refreshes, movie details, and the saved Watchlist are backed by the API; watchlist actions are persisted and saved movies are excluded from recommendations.
-- The Explore shelf browses all 40 demo titles from the catalog API with search across titles and themes, dynamic genre filters, and top-rated, newest, title, or shortest sorting.
+- The Explore shelf browses 78 demo titles across 27 original languages, with search across English and original-language titles, language and genre filters, and top-rated, newest, title, or shortest sorting.
+- Movie cards and detail views load poster thumbnails from Wikipedia's PageImages API and link to their source article. ReelRank does not own the poster images.
 - `scripts/evaluate.py` reports precision@k and catalog coverage on a deterministic leave-one-out split from the sample interactions.
 - Docker Compose runs the API as a container. Replace the bundled catalog with a versioned ingestion job, store model artifacts in a model registry, and add CI/CD and monitoring as the next production steps.
 - `PROJECT_REPORT.md` maps the design, research references, evaluation results, and implementation evidence to the course review rubric.
@@ -48,10 +49,10 @@ FastAPI's interactive endpoint guide is available at http://localhost:8000/docs 
 - `POST /api/auth/register` — create an account with `display_name`, `email`, and a password of at least 10 characters; the response sets the signed session cookie.
 - `POST /api/auth/login` — verify email/password and set the session cookie.
 - `GET /api/auth/me` and `POST /api/auth/logout` — inspect the current account or end its session.
-- `GET /api/movies?search=&genre=` — searchable movie catalog.
+- `GET /api/movies?search=&genre=&language=` — searchable catalog with original-language filtering.
 - `GET /api/users/{user_id}/preferences` — signed-in account's saved likes, dislikes, and watchlist; the ID must match the current session.
 - `GET /api/users/{user_id}/watchlist` — saved movie records for the Watchlist UI.
-- `GET /api/users/{user_id}/recommendations?limit=10` — personalized recommendations.
+- `GET /api/users/{user_id}/recommendations?limit=10&language=ko` — personalized recommendations, optionally limited to an original language.
 - `POST /api/feedback` — authenticated feedback payload `{ "movie_id": 1, "action": "like" }`; actions are `like`, `dislike`, `unlike`, `watchlist`, and `unwatchlist`.
 - `GET /api/metrics` — aggregate feedback counts without returning user-level data.
 

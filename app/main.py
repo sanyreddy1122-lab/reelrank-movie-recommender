@@ -142,17 +142,19 @@ def health():
 
 
 @app.get("/api/movies")
-def movies(search: str = "", genre: str = ""):
+def movies(search: str = "", genre: str = "", language: str = ""):
     result = recommender.movies
     if search:
         q = search.casefold()
-        result = [m for m in result if q in m["title"].casefold() or q in m["overview"].casefold()]
+        result = [m for m in result if q in m["title"].casefold() or q in m.get("original_title", "").casefold() or q in m["overview"].casefold()]
     if genre:
         result = [m for m in result if genre in m["genres"]]
+    if language:
+        result = [m for m in result if m.get("language") == language]
     return result
 
 
-def _recommend(liked: str, limit: int, genre: str, user_id: str | None = None):
+def _recommend(liked: str, limit: int, genre: str, user_id: str | None = None, language: str = ""):
     try:
         ids = [int(item) for item in liked.split(",") if item]
     except ValueError as exc:
@@ -162,21 +164,21 @@ def _recommend(liked: str, limit: int, genre: str, user_id: str | None = None):
         pref = storage.preferences(user_id)
         ids = list(dict.fromkeys(ids + pref["liked"]))
         excluded = list(dict.fromkeys(pref["disliked"] + pref["watchlist"]))
-    return recommender.recommend(ids, limit, genre or None, excluded)
+    return recommender.recommend(ids, limit, genre or None, excluded, language or None)
 
 
 @app.get("/api/recommendations")
-def recommendations(request: Request, liked: str = "", limit: int = Query(8, ge=1, le=20), genre: str = "", user_id: str | None = None):
+def recommendations(request: Request, liked: str = "", limit: int = Query(8, ge=1, le=20), genre: str = "", language: str = "", user_id: str | None = None):
     if user_id:
         user = require_user(request)
         _check_user_scope(user_id, user)
-    return _recommend(liked, limit, genre, user_id)
+    return _recommend(liked, limit, genre, user_id, language)
 
 
 @app.get("/api/users/{user_id}/recommendations")
-def user_recommendations(user_id: str, limit: int = Query(10, ge=1, le=20), genre: str = "", user: dict = Depends(require_user)):
+def user_recommendations(user_id: str, limit: int = Query(10, ge=1, le=20), genre: str = "", language: str = "", user: dict = Depends(require_user)):
     _check_user_scope(user_id, user)
-    return _recommend("", limit, genre, user_id)
+    return _recommend("", limit, genre, user_id, language)
 
 
 @app.get("/api/users/{user_id}/preferences")

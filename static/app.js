@@ -27,7 +27,9 @@ let query = '';
 let exploreGenre = 'All';
 let exploreQuery = '';
 let exploreSort = 'rating';
+let exploreLanguage = 'All';
 let userId = '';
+const artworkById = new Map();
 const $ = (selector) => document.querySelector(selector);
 
 function escapeHtml(value) {
@@ -40,6 +42,11 @@ function movieCard(movie, { recommended = false, watchlist = false } = {}) {
   const title = escapeHtml(movie.title);
   const genresLabel = movie.genres.map(escapeHtml).join(' · ').toUpperCase();
   const tone = colors[movie.genres[0]] || colors.Drama;
+  const artwork = artworkById.get(movie.id);
+  const image = artwork ? `<img class="poster-image" src="${escapeHtml(artwork.image)}" alt="${title} movie poster" loading="lazy" decoding="async" referrerpolicy="no-referrer">` : '';
+  const language = movie.language_name || 'English';
+  const originalTitle = movie.original_title && movie.original_title !== movie.title
+    ? `<div class="movie-original-title" lang="${escapeHtml(movie.language || 'en')}">${escapeHtml(movie.original_title)}</div>` : '';
   const topRight = recommended
     ? `<span class="match">${movie.match}% MATCH</span>`
     : watchlist ? '<span class="collection-label">SAVED FOR LATER</span>' : '✳';
@@ -54,12 +61,13 @@ function movieCard(movie, { recommended = false, watchlist = false } = {}) {
   }
 
   return `<article class="movie-card ${liked ? 'selected' : ''}" data-movie-id="${movie.id}">
-    <div class="poster-art" style="background:${tone}" aria-hidden="true">
+    <div class="poster-art ${artwork ? 'has-poster' : ''}" style="background:${tone}">
+      ${image}
       <span class="art-top"><span>${movie.year}</span>${topRight}</span>
       <b>${title.toUpperCase()}</b><small>${genresLabel}</small>${favoriteButton}
     </div>
-    <div class="movie-info"><div class="movie-title-row"><div class="movie-title">${title}</div><button type="button" class="detail-action" data-action="details">Details <span>↗</span></button></div>
-      <div class="movie-meta"><span>${movie.year} · ${movie.runtime} min</span><span class="rating">★ ${movie.rating}</span></div>
+    <div class="movie-info"><div class="movie-title-row"><div class="movie-title">${title}</div><button type="button" class="detail-action" data-action="details">Details <span>↗</span></button></div>${originalTitle}
+      <div class="movie-meta"><span>${movie.year} · ${escapeHtml(language)}</span><span class="rating">★ ${movie.rating}</span></div>
     </div>${actions}
   </article>`;
 }
@@ -77,8 +85,9 @@ function renderExploreGenres() {
 function renderExplore() {
   let rows = catalog.filter((movie) => {
     const matchesGenre = exploreGenre === 'All' || movie.genres.includes(exploreGenre);
-    const searchable = `${movie.title} ${movie.overview} ${movie.genres.join(' ')} ${movie.keywords.join(' ')}`.toLowerCase();
-    return matchesGenre && (!exploreQuery || searchable.includes(exploreQuery));
+    const matchesLanguage = exploreLanguage === 'All' || (movie.language || 'en') === exploreLanguage;
+    const searchable = `${movie.title} ${movie.original_title || ''} ${movie.overview} ${movie.genres.join(' ')} ${movie.keywords.join(' ')}`.toLowerCase();
+    return matchesGenre && matchesLanguage && (!exploreQuery || searchable.includes(exploreQuery));
   });
   rows = [...rows].sort((a, b) => {
     if (exploreSort === 'newest') return b.year - a.year || b.rating - a.rating;
@@ -88,7 +97,15 @@ function renderExplore() {
   });
   $('#explore-grid').innerHTML = rows.map((movie) => movieCard(movie)).join('') || '<div class="empty">No movies match those filters. Try a different genre or search.</div>';
   $('#explore-count').textContent = `${rows.length} ${rows.length === 1 ? 'film' : 'films'}`;
-  $('#explore-caption').textContent = rows.length === catalog.length ? `All ${catalog.length} stories in the ReelRank library` : `${rows.length} of ${catalog.length} films match your search`;
+  const languageName = exploreLanguage === 'All' ? 'all languages' : catalog.find((movie) => movie.language === exploreLanguage)?.language_name || exploreLanguage;
+  $('#explore-caption').textContent = rows.length === catalog.length && exploreLanguage === 'All' ? `All ${catalog.length} stories across ${new Set(catalog.map((movie) => movie.language || 'en')).size} original languages` : `${rows.length} ${rows.length === 1 ? 'film' : 'films'} · ${languageName}`;
+}
+
+function renderExploreLanguages() {
+  const options = [...new Map(catalog.map((movie) => [movie.language || 'en', movie.language_name || 'English'])).entries()]
+    .sort((a, b) => a[1].localeCompare(b[1]));
+  $('#explore-language').innerHTML = '<option value="All">All languages</option>' + options.map(([code, name]) => `<option value="${escapeHtml(code)}">${escapeHtml(name)}</option>`).join('');
+  $('#explore-language').value = exploreLanguage;
 }
 
 function updatePickNote() {
@@ -97,7 +114,7 @@ function updatePickNote() {
 }
 
 function renderCatalog() {
-  const rows = catalog.filter((movie) => (activeGenre === 'All' || movie.genres.includes(activeGenre)) && (!query || movie.title.toLowerCase().includes(query) || movie.overview.toLowerCase().includes(query)));
+  const rows = catalog.filter((movie) => (activeGenre === 'All' || movie.genres.includes(activeGenre)) && (!query || movie.title.toLowerCase().includes(query) || (movie.original_title || '').toLowerCase().includes(query) || movie.overview.toLowerCase().includes(query)));
   $('#taste-grid').innerHTML = rows.map((movie) => movieCard(movie)).join('') || '<div class="empty">No titles found. Try another search.</div>';
   $('#pick-count').textContent = `${selected.size} picked`;
   updatePickNote();
@@ -139,9 +156,14 @@ function showMovieDetails(id) {
   const title = escapeHtml(movie.title);
   const liked = selected.has(id);
   const saved = watchlisted.has(id);
+  const artwork = artworkById.get(id);
+  const image = artwork ? `<img class="detail-poster-image" src="${escapeHtml(artwork.image)}" alt="${title} movie poster" referrerpolicy="no-referrer">` : '';
+  const originalTitle = movie.original_title && movie.original_title !== movie.title
+    ? `<div class="detail-original-title" lang="${escapeHtml(movie.language || 'en')}">${escapeHtml(movie.original_title)}</div>` : '';
+  const credit = artwork ? `<a class="poster-credit" href="${escapeHtml(artwork.article)}" target="_blank" rel="noopener noreferrer">Poster source: Wikipedia ↗</a>` : '';
   $('#movie-detail').innerHTML = `<div class="detail-layout" data-movie-id="${id}">
-    <div class="detail-poster" style="background:${tone}"><span>${movie.year} · ${movie.runtime} MIN</span><b>${title.toUpperCase()}</b><small>★ ${movie.rating} AUDIENCE SCORE</small></div>
-    <div class="detail-copy"><div class="eyebrow">A REELRANK PICK</div><h2 id="detail-title">${title}</h2>
+    <div class="detail-poster ${artwork ? 'has-poster' : ''}" style="background:${tone}">${image}<span>${movie.year} · ${movie.runtime} MIN</span><b>${title.toUpperCase()}</b><small>★ ${movie.rating} AUDIENCE SCORE</small></div>
+    <div class="detail-copy"><div class="eyebrow">${escapeHtml(movie.language_name || 'English')} · A REELRANK PICK</div><h2 id="detail-title">${title}</h2>${originalTitle}${credit}
       <div class="detail-genres">${movie.genres.map((genre) => `<span>${escapeHtml(genre)}</span>`).join('')}</div>
       <p class="detail-overview">${escapeHtml(movie.overview)}</p>
       <div class="keyword-row"><span>THEMES</span>${movie.keywords.map((word) => `<i>${escapeHtml(word)}</i>`).join('')}</div>
@@ -208,6 +230,50 @@ function bindActions(container) {
   });
 }
 
+function normalizeArticleTitle(title) {
+  return String(title || '').replace(/_/g, ' ').replace(/\s*\([^)]*\)\s*$/, '').trim().toLocaleLowerCase();
+}
+
+async function loadMovieArtwork() {
+  const batches = [];
+  for (let index = 0; index < catalog.length; index += 25) batches.push(catalog.slice(index, index + 25));
+  try {
+    const responses = await Promise.allSettled(batches.map(async (batch) => {
+      const params = new URLSearchParams({
+        action: 'query', format: 'json', formatversion: '2', redirects: '1',
+        prop: 'pageimages|info', inprop: 'url', piprop: 'thumbnail|name',
+        pithumbsize: '500', pilicense: 'any', origin: '*',
+        titles: batch.map((movie) => movie.wiki_title || movie.title).join('|'),
+      });
+      const response = await fetch(`https://en.wikipedia.org/w/api.php?${params}`);
+      if (!response.ok) throw new Error('Artwork lookup failed');
+      return response.json();
+    }));
+    const images = new Map();
+    const redirects = new Map();
+    for (const result of responses) {
+      if (result.status !== 'fulfilled') continue;
+      const data = result.value;
+      for (const redirect of data.query?.redirects || []) redirects.set(normalizeArticleTitle(redirect.from), normalizeArticleTitle(redirect.to));
+      for (const page of data.query?.pages || []) {
+        if (page.thumbnail?.source && page.fullurl) {
+          images.set(normalizeArticleTitle(page.title), { image: page.thumbnail.source, article: page.fullurl });
+        }
+      }
+    }
+    for (const movie of catalog) {
+      const key = normalizeArticleTitle(movie.wiki_title || movie.title);
+      const image = images.get(redirects.get(key) || key) || images.get(key);
+      if (image) artworkById.set(movie.id, image);
+    }
+    renderCatalog();
+    renderExplore();
+    await Promise.all([renderRecommendations(), renderWatchlist()]);
+  } catch {
+    // The genre-based artwork remains in place if Wikipedia is unavailable.
+  }
+}
+
 async function checkHealth() {
   const status = $('#api-status');
   try {
@@ -255,8 +321,10 @@ async function init() {
     renderGenres();
     renderCatalog();
     renderExploreGenres();
+    renderExploreLanguages();
     renderExplore();
     await Promise.all([renderRecommendations(), renderWatchlist()]);
+    void loadMovieArtwork();
   } catch {
     $('#taste-grid').innerHTML = '<div class="empty">Could not load ReelRank. Check the API connection and refresh the page.</div>';
   }
@@ -267,6 +335,9 @@ bindActions($('#recommendations'));
 bindActions($('#explore-grid'));
 bindActions($('#watchlist-grid'));
 bindActions($('#movie-detail'));
+document.addEventListener('error', (event) => {
+  if (event.target instanceof HTMLImageElement && event.target.matches('.poster-image,.detail-poster-image')) event.target.remove();
+}, true);
 $('#genres').addEventListener('click', (event) => {
   const button = event.target.closest('[data-genre]');
   if (button) {
@@ -293,6 +364,10 @@ $('#explore-search').addEventListener('input', (event) => {
 });
 $('#explore-sort').addEventListener('change', (event) => {
   exploreSort = event.target.value;
+  renderExplore();
+});
+$('#explore-language').addEventListener('change', (event) => {
+  exploreLanguage = event.target.value;
   renderExplore();
 });
 $('#refresh').addEventListener('click', renderRecommendations);

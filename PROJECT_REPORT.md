@@ -19,16 +19,28 @@ The implementation represents each movie using its genres, keywords, and overvie
 
 ## 2. Methodology, design, and technical approach
 
-1. **Catalog:** `data/movies.json` is the version-controlled demo input. Each record includes title, year, genres, keywords, overview, runtime, and rating.
+1. **Catalog:** `data/movies.json` is the version-controlled demo input. It contains 78 demo titles across 27 original languages; records include original-language titles and searchable movie metadata. Poster thumbnails are fetched at runtime from English Wikipedia's PageImages API, with generated artwork kept as a fallback.
 2. **Feature pipeline:** `app/recommender.py` normalizes the text fields and builds TF-IDF vectors, then uses cosine similarity to rank the catalog.
 3. **Personalization:** Likes become positive profile signals. Dislikes and watchlisted titles are excluded from future recommendation results. A user can remove a saved title or unlike a favorite.
 4. **Service:** FastAPI serves the static UI and JSON routes for account registration/login, health, movies, user preferences, recommendations, watchlists, feedback, and aggregate metrics. Signed-in accounts are scoped to their own profile routes.
 5. **Persistence:** SQLite stores account records and timestamped feedback events. Passwords use salted PBKDF2 hashes; a signed HttpOnly cookie carries the session. The latest feedback event per user/title defines current state, preserving history for aggregate monitoring.
 6. **Delivery:** Docker Compose packages the API. The app also runs locally with Python and Uvicorn; the API's OpenAPI page supports endpoint inspection.
 
+### System flow
+
+```mermaid
+flowchart LR
+    Browser[ReelRank web app] -->|catalog, preferences, feedback| API[FastAPI service]
+    API -->|rank titles| Model[TF-IDF content recommender]
+    Model --> Catalog[(Versioned movie catalog)]
+    API -->|accounts and feedback| DB[(SQLite)]
+    Actions[GitHub Actions] -->|reproduce ranking metrics| Eval[Offline evaluation]
+    Actions -->|package check| Docker[Docker image build]
+```
+
 ## 3. Implementation and technical skills
 
-The responsive web UI supports a login/register page and an expanded Explore shelf with 40 catalog titles, search across plot summaries and themes, dynamic genre filters, and sorting by rating, release year, title, or runtime. It also supports favorite selection, personalized recommendations, dismiss feedback, a persistent watchlist, movie detail dialogs, and a live API status indicator. Feedback actions use the backend API, and account preferences persist in SQLite across page refreshes.
+The responsive web UI supports a login/register page and an expanded Explore shelf with 78 catalog titles across 27 original languages, search across English and native titles, language and genre filters, and sorting by rating, release year, title, or runtime. Movie cards and detail dialogs display poster thumbnails when available. It also supports favorite selection, personalized recommendations, dismiss feedback, a persistent watchlist, and a live API status indicator. Feedback actions use the backend API, and account preferences persist in SQLite across page refreshes.
 
 The backend validates feedback action names, verifies signed sessions, scopes profile access to the account, rejects unknown movie IDs, bounds recommendation limits, and exposes `/health` and `/api/metrics`. The database initializer migrates the feedback action constraint when extending the supported actions. The current app uses a shared local SQLite file without multi-instance database coordination or email verification; managed storage and an identity provider are recommended before a public production deployment.
 
@@ -36,19 +48,19 @@ The backend validates feedback action names, verifies signed sessions, scopes pr
 
 ### Offline ranking check
 
-The bundled deterministic evaluation holds out one known favorite for each of four synthetic user histories and asks whether it appears among the top five results. On the expanded 40-title demo catalog, the current model produced:
+The bundled deterministic evaluation holds out one known favorite for each of four synthetic user histories and asks whether it appears among the top five results. `py scripts/evaluate.py` produces the following figures on the current 78-title catalog:
 
 | Metric | Result | Meaning |
 | --- | ---: | --- |
 | Precision@5 | 0.100 | 2 held-out hits across 20 recommendation slots |
 | Hit rate@5 | 0.500 | 2 of 4 held-out titles appeared in the top five |
-| Catalog coverage@5 | 0.425 | 17 of 40 catalog titles appeared across the lists |
+| Catalog coverage@5 | 0.231 | 18 of 78 catalog titles appeared across the lists |
 
-The larger catalog improves the breadth of titles to explore but makes this tiny leave-one-out ranking check harder. These scores are a smoke-level demonstration on synthetic histories, not evidence of real-world quality. Four users are too few for statistical conclusions. Re-run `py scripts/evaluate.py` after installing dependencies to reproduce the ranking check locally. Compare future model versions on a larger, time-aware held-out dataset and report both ranking quality and catalog coverage.
+These scores are a small reproducibility demonstration on synthetic histories, not evidence of real-world quality. Four users are too few for statistical conclusions, and the low Precision@5 indicates the recommender needs improvement. Compare future model versions against a popularity baseline on a larger, time-aware held-out dataset; report ranking quality, catalog coverage, and results by language.
 
 ### Product and MLOps contribution
 
-The project connects the user feedback loop to a persistent profile and the recommendation endpoint, so likes, dislikes, and saved titles affect the next result set. It also has a deterministic evaluation script, health and aggregate event metrics, a versioned input catalog, a container setup, and a documented API. These pieces create a practical baseline for later model/data versioning, automated evaluation gates, drift checks, and deployment automation.
+The project connects the user feedback loop to a persistent profile and the recommendation endpoint, so likes, dislikes, and saved titles affect the next result set. It also has a deterministic evaluation script, health and aggregate event metrics, a versioned input catalog, a container setup, and a documented API. GitHub Actions runs the offline evaluation and builds the Docker image on pushes and pull requests. Model artifact lineage, evaluation gates, drift checks, and deployment automation remain future work.
 
 ## 5. Presentation and documentation
 
@@ -58,6 +70,8 @@ The project connects the user feedback loop to a persistent profile and the reco
 - Ranking evaluation: `scripts/evaluate.py`.
 - Local container setup: `Dockerfile` and `docker-compose.yml`.
 - Interactive API guide: `/docs` while the service is running.
+- Automated workflow: `.github/workflows/docker-image.yml` installs dependencies, runs the offline ranking evaluation, and builds the Docker image.
+- Demo walkthrough: register or log in, select a few favorite titles, inspect recommendations, filter Explore by language/genre, open a movie detail, add it to the Watchlist, then refresh and confirm it persists.
 
 ### Rubric coverage
 
@@ -66,5 +80,9 @@ The project connects the user feedback loop to a persistent profile and the reco
 | Problem definition and literature survey (20) | Problem statement, method selection rationale, and selected research references above |
 | Methodology, design, and technical approach (20) | Catalog-to-feature-to-ranking pipeline, API, feedback persistence, and delivery design |
 | Implementation and technical skills (25) | FastAPI backend, signed account sessions, TF-IDF recommender, SQLite store, responsive UI, Docker |
-| Results, testing, and innovation (20) | Reproducible top-five ranking metrics, interactive feedback loop, health and metrics endpoints |
-| Presentation, documentation, and team contribution (15) | This report, README, API docs, and organized project structure |
+| Results, testing, and innovation (20) | CI evaluation, top-five ranking metrics, interactive feedback loop, health and metrics endpoints; evaluation data is only four synthetic histories |
+| Presentation, documentation, and team contribution (15) | This report, README, API docs, demo walkthrough, and organized project structure; add the actual team member names and contribution evidence before submission |
+
+### Submission readiness and remaining evidence
+
+The implementation demonstrates the main product and engineering criteria, but this report does not claim a full score. To strengthen the review, expand the literature comparison beyond the selected foundational references; define measurable requirements and a baseline; evaluate more representative users and languages; include model/data version identifiers and a drift or input-quality check; and prepare a short slide deck or live demonstration. Record only actual team members and their real contributions in the submitted copy.
