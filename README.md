@@ -2,6 +2,8 @@
 
 A small, runnable movie recommendation product built as an MLOps starter. It includes a FastAPI service, a content-based recommendation baseline, a cinematic streaming-style responsive interface, a multilingual catalog, movie poster artwork, Docker Compose, and a path to evolve the model and data pipeline.
 
+**Live Render demo:** [reelrank-movie-recommender.onrender.com](https://reelrank-movie-recommender.onrender.com)
+
 ## Run locally on Windows
 
 First install Python 3.10 or newer from [python.org](https://www.python.org/downloads/windows/). In the installer, enable **Add python.exe to PATH**. Close and reopen Command Prompt after installation.
@@ -25,11 +27,11 @@ If `py --version` is not recognized, Python is not installed or its launcher is 
 docker compose up --build
 ```
 
-## Publish a free demo on Render
+## Render deployment
 
-The repository includes a Render Blueprint in `render.yaml`. Use the [one-click Render setup](https://render.com/deploy?repo=https://github.com/sanyreddy1122-lab/reelrank-movie-recommender), sign in, connect GitHub, review the Blueprint, and deploy. Render builds the FastAPI app, checks `/health`, and deploys new `main` commits after the GitHub Actions checks pass.
+The live demo is configured by the root-level `render.yaml` Blueprint. It runs FastAPI with Render's Python runtime, installs `requirements.txt`, binds Uvicorn to Render's `$PORT`, checks `/health`, and waits for GitHub Actions before automatically deploying new `main` commits. To recreate it in another Render workspace, use the [one-click Render setup](https://render.com/deploy?repo=https://github.com/sanyreddy1122-lab/reelrank-movie-recommender), connect GitHub, and deploy the Blueprint.
 
-This Blueprint selects Render's free web-service plan. Free services can sleep when idle, and their files are temporary; demo accounts, likes, and watchlists can be cleared after a restart or deploy. Use a paid persistent disk or move account and feedback storage to a managed database for durable public use.
+This Blueprint selects Render's free web-service plan. Free services can sleep when idle, and their files are temporary; demo accounts, likes, and watchlists can be cleared after a restart or deploy. Use a paid persistent disk or move account and feedback storage to a managed database for durable public use. Blueprint changes may require a sync in the Render dashboard.
 
 ## MLOps lifecycle
 
