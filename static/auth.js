@@ -5,11 +5,17 @@ const emailInput = document.querySelector('#email');
 const passwordInput = document.querySelector('#password');
 const errorMessage = document.querySelector('#auth-error');
 const submitButton = document.querySelector('.auth-submit');
+const authPanel = document.querySelector('.auth-panel');
+const demoFillButton = document.querySelector('#demo-fill');
+const demoCredentials = document.querySelector('.demo-credentials');
 let mode = 'login';
 
 function setMode(nextMode) {
   mode = nextMode;
   const registering = mode === 'register';
+  authPanel.classList.toggle('is-register', registering);
+  demoFillButton.hidden = registering;
+  demoCredentials.hidden = registering;
   nameField.hidden = !registering;
   nameInput.required = registering;
   passwordInput.minLength = registering ? 10 : 1;
@@ -29,6 +35,15 @@ function setMode(nextMode) {
 
 document.querySelector('#login-tab').addEventListener('click', () => setMode('login'));
 document.querySelector('#register-tab').addEventListener('click', () => setMode('register'));
+demoFillButton.addEventListener('click', () => {
+  emailInput.value = 'demo@example.com';
+  passwordInput.value = 'ReelRankDemo2026!';
+  emailInput.dispatchEvent(new Event('input', { bubbles: true }));
+  passwordInput.dispatchEvent(new Event('input', { bubbles: true }));
+  emailInput.focus();
+  demoFillButton.setAttribute('aria-label', 'Demo account details filled in. Submit the form to sign in.');
+  document.querySelector('#submit-label').textContent = 'Sign in to demo';
+});
 document.querySelector('#password-toggle').addEventListener('click', (event) => {
   const reveal = passwordInput.type === 'password';
   passwordInput.type = reveal ? 'text' : 'password';

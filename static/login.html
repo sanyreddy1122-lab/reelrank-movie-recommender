@@ -8,7 +8,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="/static/login.css">
+  <link rel="stylesheet" href="/static/login.css?v=20261007-1">
 </head>
 <body>
   <main class="auth-layout">
@@ -31,9 +31,15 @@
     <section class="auth-panel" aria-labelledby="auth-title">
       <div class="auth-card">
         <div class="auth-mobile-brand"><span class="auth-brand-mark">R</span> reelrank<span>.</span></div>
-        <div class="auth-kicker">YOUR NEXT MOVIE NIGHT STARTS HERE</div>
+        <div class="auth-kicker"><span class="status-dot"></span> YOUR NEXT MOVIE NIGHT STARTS HERE</div>
         <h2 id="auth-title">Welcome back.</h2>
         <p class="auth-subtitle" id="auth-subtitle">Sign in to your ReelRank account.</p>
+
+        <button class="demo-quick" id="demo-fill" type="button" aria-label="Fill in the shared demo account details">
+          <span class="demo-quick-icon" aria-hidden="true">✦</span>
+          <span class="demo-quick-copy"><strong>Just exploring?</strong><small>Fill in the demo account details</small></span>
+          <span class="demo-quick-arrow" aria-hidden="true">→</span>
+        </button>
 
         <div class="auth-tabs" role="tablist" aria-label="Account access">
           <button type="button" class="auth-tab active" id="login-tab" role="tab" aria-selected="true">Sign in</button>
@@ -58,11 +64,16 @@
           <button class="auth-submit" type="submit"><span id="submit-label">Sign in</span><span aria-hidden="true">→</span></button>
         </form>
         <p class="auth-security"><span>✦</span> Your password is securely hashed. Your movie taste stays yours.</p>
-        <p class="demo-credentials"><strong>Shared demo login</strong><br><code>demo@example.com</code><br><code>ReelRankDemo2026!</code><small>Anyone can use this public demo account and change its preferences.</small></p>
+        <aside class="demo-credentials" aria-label="Shared demo account credentials">
+          <div class="demo-heading"><span class="demo-live-dot"></span><strong>Shared demo account</strong></div>
+          <div class="demo-credential-row"><span>Email</span><code>demo@example.com</code></div>
+          <div class="demo-credential-row"><span>Password</span><code>ReelRankDemo2026!</code></div>
+          <small>This account is shared. Your changes may be visible to other visitors.</small>
+        </aside>
       </div>
       <div class="auth-bottom">A small signal in a very big cinema. <span>✳</span></div>
     </section>
   </main>
-  <script src="/static/auth.js"></script>
+  <script src="/static/auth.js?v=20261007-1"></script>
 </body>
 </html>
