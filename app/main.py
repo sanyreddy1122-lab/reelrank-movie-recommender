@@ -2,6 +2,7 @@ import base64
 import hashlib
 import hmac
 import json
+import os
 import time
 from pathlib import Path
 
@@ -21,6 +22,10 @@ SESSION_SECRET = storage.session_secret()
 app = FastAPI(title="ReelRank Movie Recommender", version="0.2.0")
 app.mount("/static", StaticFiles(directory=ROOT / "static"), name="static")
 storage.initialize()
+storage.ensure_demo_account(
+    os.environ.get("REELRANK_DEMO_EMAIL", "demo@example.com"),
+    os.environ.get("REELRANK_DEMO_PASSWORD", "ReelRankDemo2026!"),
+)
 
 
 class RegisterRequest(BaseModel):

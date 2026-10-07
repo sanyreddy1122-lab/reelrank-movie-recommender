@@ -31,6 +31,8 @@ docker compose up --build
 
 The live demo is configured by the root-level `render.yaml` Blueprint. It runs FastAPI with Render's Python runtime, installs `requirements.txt`, binds Uvicorn to Render's `$PORT`, checks `/health`, and waits for GitHub Actions before automatically deploying new `main` commits. To recreate it in another Render workspace, use the [one-click Render setup](https://render.com/deploy?repo=https://github.com/sanyreddy1122-lab/reelrank-movie-recommender), connect GitHub, and deploy the Blueprint.
 
+The intentionally shared demo login is `demo@example.com` with password `ReelRankDemo2026!`. The app refreshes this demo account on startup so the credentials work after a restart. Anyone can use this account and change its shared likes and watchlist; do not store private information in it.
+
 This Blueprint selects Render's free web-service plan. Free services can sleep when idle, and their files are temporary; demo accounts, likes, and watchlists can be cleared after a restart or deploy. Use a paid persistent disk or move account and feedback storage to a managed database for durable public use. Blueprint changes may require a sync in the Render dashboard.
 
 ## MLOps lifecycle

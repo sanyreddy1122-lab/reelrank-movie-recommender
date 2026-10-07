@@ -89,6 +89,26 @@ def create_user(display_name: str, email: str, password: str) -> dict | None:
     return get_user_by_id(user_id)
 
 
+def ensure_demo_account(email: str, password: str) -> None:
+    """Create or refresh the intentionally shared demo login for app demonstrations."""
+    normalized_email = email.strip().lower()
+    salt = secrets.token_bytes(16)
+    digest = _password_hash(password, salt)
+    encoded = f"pbkdf2_sha256${PASSWORD_ITERATIONS}${base64.b64encode(salt).decode()}${base64.b64encode(digest).decode()}"
+    with connect() as db:
+        existing = db.execute("SELECT id FROM users WHERE email=? COLLATE NOCASE", (normalized_email,)).fetchone()
+        if existing:
+            db.execute(
+                "UPDATE users SET display_name=?, password_hash=? WHERE id=?",
+                ("ReelRank Demo", encoded, existing["id"]),
+            )
+        else:
+            db.execute(
+                "INSERT INTO users(id,email,display_name,password_hash,created_at) VALUES(?,?,?,?,?)",
+                (str(uuid.uuid4()), normalized_email, "ReelRank Demo", encoded, datetime.now(timezone.utc).isoformat()),
+            )
+
+
 def _public_user(row: sqlite3.Row | None) -> dict | None:
     if row is None:
         return None

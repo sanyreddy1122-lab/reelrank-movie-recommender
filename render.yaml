@@ -14,3 +14,7 @@ services:
         value: /tmp/reelrank
       - key: REELRANK_SECRET_KEY
         generateValue: true
+      - key: REELRANK_DEMO_EMAIL
+        value: demo@example.com
+      - key: REELRANK_DEMO_PASSWORD
+        value: ReelRankDemo2026!
