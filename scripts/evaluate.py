@@ -32,7 +32,7 @@ print(f"precision@{cutoff}: {precision_at_k:.3f}")
 print(f"hit rate@{cutoff}: {hit_rate_at_k:.3f}")
 print(f"catalog coverage@{cutoff}: {catalog_coverage_at_k:.3f} ({len(recommended)}/{len(recommender.movies)})")
 
-tracking_uri = os.environ.get("MLFLOW_TRACKING_URI", "file:./mlruns")
+tracking_uri = os.environ.get("MLFLOW_TRACKING_URI", "sqlite:///mlflow.db")
 mlflow.set_tracking_uri(tracking_uri)
 mlflow.set_experiment("ReelRank-Recommender")
 with mlflow.start_run(run_name="tfidf-content-evaluation"):

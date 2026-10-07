@@ -57,7 +57,7 @@ def main() -> None:
     print(f"Current rows:   {len(current)}")
     print(f"Data drift report: {args.output}")
 
-    tracking_uri = os.environ.get("MLFLOW_TRACKING_URI", "file:./mlruns")
+    tracking_uri = os.environ.get("MLFLOW_TRACKING_URI", "sqlite:///mlflow.db")
     mlflow.set_tracking_uri(tracking_uri)
     mlflow.set_experiment("ReelRank-Recommender")
     with mlflow.start_run(run_name="evidently-catalog-drift-report"):

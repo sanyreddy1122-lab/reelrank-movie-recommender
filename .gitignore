@@ -7,6 +7,10 @@ data/feedback.sqlite3-wal
 data/session.key
 logs/
 mlruns/
+mlartifacts/
+mlflow.db
+mlflow.db-shm
+mlflow.db-wal
 reports/*.html
 reports/*.json
 .env

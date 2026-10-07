@@ -46,7 +46,7 @@ py scripts/evaluate.py
 py scripts/data_drift_report.py
 ```
 
-Open MLflow at http://localhost:5000. The drift report is written to `reports/data-drift-report.html`. Evidently compares the current movie catalog features against the checked-in reference snapshot in `data/reference/movies_baseline.csv`; update that baseline only when you intentionally accept a new catalog version. GitHub Actions runs both reports and saves them as workflow artifacts. The Render web service keeps only its lightweight runtime dependencies; the tracking server and drift tooling run locally or in CI.
+Open MLflow at http://localhost:5000. The drift report is written to `reports/data-drift-report.html`. Evidently compares the current movie catalog features against the checked-in reference snapshot in `data/reference/movies_baseline.csv`; update that baseline only when you intentionally accept a new catalog version. GitHub Actions runs both reports and saves them as workflow artifacts. The Render web service keeps only its lightweight runtime dependencies; the tracking server and drift tooling run locally or in CI. Without `MLFLOW_TRACKING_URI`, the scripts use a local SQLite tracking database (`mlflow.db`) and local artifact directory (`mlartifacts/`) rather than MLflow's deprecated file-store backend.
 
 ## Render deployment
 
@@ -67,7 +67,7 @@ This Blueprint selects Render's free web-service plan. Free services can sleep w
 - The browser calls the FastAPI service on the same origin. Favorites, dismissals, recommendation refreshes, movie details, and the saved Watchlist are backed by the API; watchlist actions are persisted and saved movies are excluded from recommendations.
 - The Explore shelf browses 78 demo titles across 27 original languages, with search across English and original-language titles, language and genre filters, and top-rated, newest, title, or shortest sorting.
 - Movie cards and detail views load poster thumbnails from Wikipedia's PageImages API and link to their source article. ReelRank does not own the poster images.
-- `scripts/evaluate.py` reports precision@k, hit rate@k, and catalog coverage on a deterministic leave-one-out split from sample interactions, and logs parameters and metrics to an MLflow experiment.
+- `scripts/evaluate.py` reports precision@k, hit rate@k, and catalog coverage on a deterministic leave-one-out split from sample interactions, and logs parameters and metrics to an MLflow experiment using SQLite by default.
 - `scripts/data_drift_report.py` generates an Evidently `DataDriftPreset` report comparing current catalog features against the versioned reference snapshot and logs the HTML report to the MLflow experiment.
 - Docker Compose runs the API container; `docker compose --profile mlops up --build` also starts a persistent local MLflow tracking server.
 - `PROJECT_REPORT.md` maps the design, research references, evaluation results, and implementation evidence to the course review rubric.

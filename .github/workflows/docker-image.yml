@@ -28,7 +28,10 @@ jobs:
           name: mlops-reports
           path: |
             reports/
-            mlruns/
+            mlflow.db
+            mlflow.db-shm
+            mlflow.db-wal
+            mlartifacts/
           if-no-files-found: error
       - name: Build the Docker image
         run: docker build . --file Dockerfile --tag reelrank:ci
