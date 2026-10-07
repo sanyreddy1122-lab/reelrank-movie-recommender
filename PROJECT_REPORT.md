@@ -23,8 +23,8 @@ The implementation represents each movie using its genres, keywords, and overvie
 2. **Feature pipeline:** `app/recommender.py` normalizes the text fields and builds TF-IDF vectors, then uses cosine similarity to rank the catalog.
 3. **Personalization:** Likes become positive profile signals. Dislikes and watchlisted titles are excluded from future recommendation results. A user can remove a saved title or unlike a favorite.
 4. **Service:** FastAPI serves the static UI and JSON routes for account registration/login, health, movies, user preferences, recommendations, watchlists, feedback, and aggregate metrics. Signed-in accounts are scoped to their own profile routes.
-5. **Persistence:** SQLite stores account records and timestamped feedback events. Passwords use salted PBKDF2 hashes; a signed HttpOnly cookie carries the session. The latest feedback event per user/title defines current state, preserving history for aggregate monitoring.
-6. **Delivery:** Docker Compose packages the API. The app also runs locally with Python and Uvicorn; the API's OpenAPI page supports endpoint inspection.
+5. **Persistence and monitoring:** SQLite stores account records and timestamped feedback events. Passwords use salted PBKDF2 hashes; a signed HttpOnly cookie carries the session. The live MLOps panel displays the data → TF-IDF → ranking → feedback → CI workflow, SQLite health, model/catalog metadata, aggregate feedback, API request volume, mean latency, and server errors.
+6. **Delivery:** GitHub Actions evaluates the ranking baseline and builds the Docker image. Render serves the web app and performs the `/health` check. The API's OpenAPI page supports endpoint inspection.
 
 ### System flow
 
@@ -42,7 +42,7 @@ flowchart LR
 
 The responsive web UI supports a login/register page and an expanded Explore shelf with 78 catalog titles across 27 original languages, search across English and native titles, language and genre filters, and sorting by rating, release year, title, or runtime. Movie cards and detail dialogs display poster thumbnails when available. It also supports favorite selection, personalized recommendations, dismiss feedback, a persistent watchlist, and a live API status indicator. Feedback actions use the backend API, and account preferences persist in SQLite across page refreshes.
 
-The backend validates feedback action names, verifies signed sessions, scopes profile access to the account, rejects unknown movie IDs, bounds recommendation limits, and exposes `/health` and `/api/metrics`. The database initializer migrates the feedback action constraint when extending the supported actions. The current app uses a shared local SQLite file without multi-instance database coordination or email verification; managed storage and an identity provider are recommended before a public production deployment.
+The backend validates feedback action names, verifies signed sessions, scopes profile access to the account, rejects unknown movie IDs, bounds recommendation limits, and exposes `/health` and `/api/metrics`. Health checks now include SQLite connectivity. Runtime request counts, mean latency, and 5xx counts are process-local, so they reset on restart and are intended for the educational demo. There is no feature-drift detector, alerting, or multi-instance metrics backend. The current app uses a shared local SQLite file without multi-instance database coordination or email verification; managed storage and an identity provider are recommended before a public production deployment.
 
 ## 4. Results and innovation
 
@@ -60,7 +60,7 @@ These scores are a small reproducibility demonstration on synthetic histories, n
 
 ### Product and MLOps contribution
 
-The project connects the user feedback loop to a persistent profile and the recommendation endpoint, so likes, dislikes, and saved titles affect the next result set. It also has a deterministic evaluation script, health and aggregate event metrics, a versioned input catalog, a container setup, and a documented API. GitHub Actions runs the offline evaluation and builds the Docker image on pushes and pull requests. Model artifact lineage, evaluation gates, drift checks, and deployment automation remain future work.
+The project connects the user feedback loop to a persistent profile and the recommendation endpoint, so likes, dislikes, and saved titles affect the next result set. It also has a deterministic evaluation script, live model/service monitoring, aggregate feedback metrics, a versioned input catalog, a container setup, and a documented API. GitHub Actions runs the offline evaluation and builds the Docker image on pushes and pull requests. Model artifact lineage, evaluation gates, feature-drift checks, and alerting remain future work.
 
 ## 5. Presentation and documentation
 

@@ -3,6 +3,7 @@ import hashlib
 import hmac
 import json
 import os
+import threading
 import time
 from pathlib import Path
 
@@ -21,11 +22,31 @@ SESSION_TTL_SECONDS = 60 * 60 * 24 * 14
 SESSION_SECRET = storage.session_secret()
 app = FastAPI(title="ReelRank Movie Recommender", version="0.2.0")
 app.mount("/static", StaticFiles(directory=ROOT / "static"), name="static")
+_runtime_lock = threading.Lock()
+_runtime_metrics = {"api_requests": 0, "server_errors": 0, "latency_ms_total": 0.0}
 storage.initialize()
 storage.ensure_demo_account(
     os.environ.get("REELRANK_DEMO_EMAIL", "demo@example.com"),
     os.environ.get("REELRANK_DEMO_PASSWORD", "ReelRankDemo2026!"),
 )
+
+
+@app.middleware("http")
+async def observe_api_requests(request: Request, call_next):
+    started = time.perf_counter()
+    status_code = 500
+    try:
+        response = await call_next(request)
+        status_code = response.status_code
+        return response
+    finally:
+        if request.url.path.startswith("/api/"):
+            elapsed_ms = (time.perf_counter() - started) * 1000
+            with _runtime_lock:
+                _runtime_metrics["api_requests"] += 1
+                _runtime_metrics["latency_ms_total"] += elapsed_ms
+                if status_code >= 500:
+                    _runtime_metrics["server_errors"] += 1
 
 
 class RegisterRequest(BaseModel):
@@ -142,8 +163,17 @@ def logout(response: Response):
 
 
 @app.get("/health")
-def health():
-    return {"status": "ok", "model": "tfidf-content-v1", "catalog_size": len(recommender.movies)}
+def health(response: Response):
+    database_status = "ok" if storage.database_healthy() else "unavailable"
+    status = "ok" if database_status == "ok" else "degraded"
+    response.status_code = 200 if status == "ok" else 503
+    return {
+        "status": status,
+        "database": database_status,
+        "model": "tfidf-content-v1",
+        "catalog_size": len(recommender.movies),
+        "language_count": len({movie.get("language", "en") for movie in recommender.movies}),
+    }
 
 
 @app.get("/api/movies")
@@ -211,4 +241,18 @@ def feedback(payload: Feedback, user: dict = Depends(require_user)):
 
 @app.get("/api/metrics")
 def metrics():
-    return {"model": "tfidf-content-v1", "catalog_size": len(recommender.movies), **storage.feedback_summary()}
+    with _runtime_lock:
+        api_requests = _runtime_metrics["api_requests"]
+        server_errors = _runtime_metrics["server_errors"]
+        latency_ms_total = _runtime_metrics["latency_ms_total"]
+    return {
+        "model": "tfidf-content-v1",
+        "catalog_size": len(recommender.movies),
+        "language_count": len({movie.get("language", "en") for movie in recommender.movies}),
+        "runtime": {
+            "api_requests": api_requests,
+            "server_errors": server_errors,
+            "average_latency_ms": round(latency_ms_total / api_requests, 2) if api_requests else 0,
+        },
+        **storage.feedback_summary(),
+    }

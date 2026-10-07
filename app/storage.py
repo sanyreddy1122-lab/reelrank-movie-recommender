@@ -22,6 +22,15 @@ def connect() -> sqlite3.Connection:
     return db
 
 
+def database_healthy() -> bool:
+    try:
+        with connect() as db:
+            db.execute("SELECT 1").fetchone()
+        return True
+    except sqlite3.Error:
+        return False
+
+
 def initialize() -> None:
     with connect() as db:
         schema = db.execute("SELECT sql FROM sqlite_master WHERE type='table' AND name='feedback'").fetchone()

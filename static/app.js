@@ -295,6 +295,47 @@ async function checkHealth() {
   }
 }
 
+function setWorkflowState(selector, label, state) {
+  const element = $(selector);
+  element.textContent = label;
+  element.classList.toggle('state-ready', state === 'ready');
+  element.classList.toggle('state-error', state === 'error');
+}
+
+async function refreshMonitoring() {
+  try {
+    const [healthResponse, metricsResponse] = await Promise.all([
+      fetch(`${API}/health`, { cache: 'no-store' }),
+      fetch(`${API}/api/metrics`, { cache: 'no-store' }),
+    ]);
+    const health = await healthResponse.json();
+    $('#monitor-service').textContent = health.status === 'ok' ? 'Online' : 'Degraded';
+    $('#monitor-database').textContent = health.database === 'ok' ? 'Connected' : 'Unavailable';
+    $('#monitor-version').textContent = health.model || 'Unknown';
+    $('#monitor-catalog').textContent = `${health.catalog_size || 0} films · ${health.language_count || 0} languages`;
+    setWorkflowState('#monitor-data-state', healthResponse.ok ? 'READY' : 'CHECK', healthResponse.ok ? 'ready' : 'error');
+    setWorkflowState('#monitor-model', healthResponse.ok ? 'SERVING' : 'ERROR', healthResponse.ok ? 'ready' : 'error');
+
+    if (!metricsResponse.ok) throw new Error('Metrics are unavailable');
+    const metrics = await metricsResponse.json();
+    const actions = metrics.actions || {};
+    $('#monitor-events').textContent = metrics.total_events ?? 0;
+    $('#monitor-users').textContent = metrics.users ?? 0;
+    $('#monitor-actions').textContent = `${actions.like || 0} likes · ${actions.dislike || 0} skips · ${actions.watchlist || 0} saves`;
+    const runtime = metrics.runtime || {};
+    $('#monitor-requests').textContent = runtime.api_requests ?? 0;
+    $('#monitor-latency').textContent = `${runtime.average_latency_ms ?? 0} ms`;
+    $('#monitor-errors').textContent = runtime.server_errors ?? 0;
+    $('#monitor-updated').textContent = `Updated ${new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`;
+  } catch {
+    $('#monitor-service').textContent = 'Unavailable';
+    $('#monitor-database').textContent = 'Unknown';
+    $('#monitor-updated').textContent = 'Monitor connection lost';
+    setWorkflowState('#monitor-data-state', 'OFFLINE', 'error');
+    setWorkflowState('#monitor-model', 'OFFLINE', 'error');
+  }
+}
+
 async function init() {
   renderGenres();
   try {
@@ -381,4 +422,6 @@ $('#movie-dialog').addEventListener('click', (event) => {
   if (event.target === $('#movie-dialog')) $('#movie-dialog').close();
 });
 setInterval(checkHealth, 45000);
+setInterval(refreshMonitoring, 30000);
+void refreshMonitoring();
 init();
