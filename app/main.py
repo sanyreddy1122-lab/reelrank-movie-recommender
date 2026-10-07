@@ -13,7 +13,7 @@ from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
 from app import storage
-from app.recommender import recommender
+from app.recommender import MODEL_VERSION, recommender
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -65,6 +65,13 @@ class Feedback(BaseModel):
     movie_id: int
     user_id: str | None = Field(default=None, min_length=1, max_length=80, pattern=r"^[a-zA-Z0-9_-]+$")
     action: str = Field(pattern=r"^(like|dislike|watchlist|unlike|unwatchlist)$")
+
+
+class PredictRequest(BaseModel):
+    liked_movie_ids: list[int] = Field(default_factory=list, max_length=78)
+    limit: int = Field(default=10, ge=1, le=20)
+    genre: str | None = Field(default=None, max_length=40)
+    language: str | None = Field(default=None, min_length=2, max_length=12)
 
 
 def _b64url(value: bytes) -> str:
@@ -170,7 +177,7 @@ def health(response: Response):
     return {
         "status": status,
         "database": database_status,
-        "model": "tfidf-content-v1",
+        "model": MODEL_VERSION,
         "catalog_size": len(recommender.movies),
         "language_count": len({movie.get("language", "en") for movie in recommender.movies}),
     }
@@ -210,6 +217,20 @@ def recommendations(request: Request, liked: str = "", limit: int = Query(8, ge=
     return _recommend(liked, limit, genre, user_id, language)
 
 
+@app.post("/predict")
+def predict(payload: PredictRequest):
+    unknown_ids = sorted(set(payload.liked_movie_ids) - set(recommender.by_id))
+    if unknown_ids:
+        raise HTTPException(422, detail={"message": "Unknown movie IDs", "movie_ids": unknown_ids})
+    predictions = recommender.recommend(
+        payload.liked_movie_ids,
+        limit=payload.limit,
+        genre=payload.genre,
+        language=payload.language,
+    )
+    return {"model": MODEL_VERSION, "predictions": predictions}
+
+
 @app.get("/api/users/{user_id}/recommendations")
 def user_recommendations(user_id: str, limit: int = Query(10, ge=1, le=20), genre: str = "", language: str = "", user: dict = Depends(require_user)):
     _check_user_scope(user_id, user)
@@ -246,7 +267,7 @@ def metrics():
         server_errors = _runtime_metrics["server_errors"]
         latency_ms_total = _runtime_metrics["latency_ms_total"]
     return {
-        "model": "tfidf-content-v1",
+        "model": MODEL_VERSION,
         "catalog_size": len(recommender.movies),
         "language_count": len({movie.get("language", "en") for movie in recommender.movies}),
         "runtime": {

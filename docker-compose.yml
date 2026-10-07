@@ -6,3 +6,16 @@ services:
     volumes:
       - ./data:/srv/data
     restart: unless-stopped
+  mlflow:
+    profiles: ["mlops"]
+    build:
+      context: .
+      dockerfile: Dockerfile.mlflow
+    ports:
+      - "5000:5000"
+    volumes:
+      - mlflow-data:/mlflow
+    restart: unless-stopped
+
+volumes:
+  mlflow-data:

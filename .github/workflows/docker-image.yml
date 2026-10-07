@@ -17,8 +17,18 @@ jobs:
           python-version: "3.12"
           cache: pip
       - name: Install dependencies
-        run: python -m pip install -r requirements.txt
-      - name: Evaluate recommendation baseline
+        run: python -m pip install -r requirements-mlops.txt
+      - name: Evaluate and track recommendation baseline
         run: python scripts/evaluate.py
+      - name: Generate data drift report
+        run: python scripts/data_drift_report.py
+      - name: Keep evaluation and drift reports
+        uses: actions/upload-artifact@v4
+        with:
+          name: mlops-reports
+          path: |
+            reports/
+            mlruns/
+          if-no-files-found: error
       - name: Build the Docker image
         run: docker build . --file Dockerfile --tag reelrank:ci

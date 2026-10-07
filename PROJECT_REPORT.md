@@ -23,8 +23,9 @@ The implementation represents each movie using its genres, keywords, and overvie
 2. **Feature pipeline:** `app/recommender.py` normalizes the text fields and builds TF-IDF vectors, then uses cosine similarity to rank the catalog.
 3. **Personalization:** Likes become positive profile signals. Dislikes and watchlisted titles are excluded from future recommendation results. A user can remove a saved title or unlike a favorite.
 4. **Service:** FastAPI serves the static UI and JSON routes for account registration/login, health, movies, user preferences, recommendations, watchlists, feedback, and aggregate metrics. Signed-in accounts are scoped to their own profile routes.
-5. **Persistence and monitoring:** SQLite stores account records and timestamped feedback events. Passwords use salted PBKDF2 hashes; a signed HttpOnly cookie carries the session. The live MLOps panel displays the data → TF-IDF → ranking → feedback → CI workflow, SQLite health, model/catalog metadata, aggregate feedback, API request volume, mean latency, and server errors.
-6. **Delivery:** GitHub Actions evaluates the ranking baseline and builds the Docker image. Render serves the web app and performs the `/health` check. The API's OpenAPI page supports endpoint inspection.
+5. **Persistence and monitoring:** SQLite stores account records and timestamped feedback events. Passwords use salted PBKDF2 hashes; a signed HttpOnly cookie carries the session. The live MLOps panel displays the data → TF-IDF → ranking → feedback → MLflow/CI → drift workflow, SQLite health, model/catalog metadata, aggregate feedback, API request volume, mean latency, and server errors.
+6. **Experiment tracking and drift:** `scripts/evaluate.py` logs model parameters plus precision@k, hit rate@k, and catalog coverage to an MLflow experiment. `scripts/data_drift_report.py` uses Evidently's `DataDriftPreset` to compare current catalog features to the versioned reference snapshot and logs its HTML report to MLflow. The report is also saved locally and as a GitHub Actions artifact.
+7. **Delivery and inference:** FastAPI exposes `POST /predict` for JSON recommendation requests. Docker Compose packages the API and can start a local persistent MLflow tracking server. GitHub Actions evaluates, records, and packages each change; Render serves the lightweight web app and checks `/health`.
 
 ### System flow
 
@@ -35,6 +36,9 @@ flowchart LR
     Model --> Catalog[(Versioned movie catalog)]
     API -->|accounts and feedback| DB[(SQLite)]
     Actions[GitHub Actions] -->|reproduce ranking metrics| Eval[Offline evaluation]
+    Eval -->|parameters and metrics| MLflow[MLflow experiment]
+    Actions -->|reference vs current catalog| Drift[Evidently drift report]
+    Browser -->|POST /predict| API
     Actions -->|package check| Docker[Docker image build]
 ```
 
@@ -42,13 +46,13 @@ flowchart LR
 
 The responsive web UI supports a login/register page and an expanded Explore shelf with 78 catalog titles across 27 original languages, search across English and native titles, language and genre filters, and sorting by rating, release year, title, or runtime. Movie cards and detail dialogs display poster thumbnails when available. It also supports favorite selection, personalized recommendations, dismiss feedback, a persistent watchlist, and a live API status indicator. Feedback actions use the backend API, and account preferences persist in SQLite across page refreshes.
 
-The backend validates feedback action names, verifies signed sessions, scopes profile access to the account, rejects unknown movie IDs, bounds recommendation limits, and exposes `/health` and `/api/metrics`. Health checks now include SQLite connectivity. Runtime request counts, mean latency, and 5xx counts are process-local, so they reset on restart and are intended for the educational demo. There is no feature-drift detector, alerting, or multi-instance metrics backend. The current app uses a shared local SQLite file without multi-instance database coordination or email verification; managed storage and an identity provider are recommended before a public production deployment.
+The backend validates feedback action names, verifies signed sessions, scopes profile access to the account, rejects unknown movie IDs, bounds recommendation limits, and exposes `/health`, `/api/metrics`, and `/predict`. Health checks include SQLite connectivity. Runtime request counts, mean latency, and 5xx counts are process-local, so they reset on restart and are intended for the educational demo. The offline Evidently report detects catalog feature changes against a versioned reference snapshot; it is not a live monitor of each user's prediction inputs and does not trigger automatic retraining. The current app uses local SQLite without multi-instance coordination or email verification; managed storage, an identity provider, and a persistent metrics backend are recommended before a public production deployment.
 
 ## 4. Results and innovation
 
 ### Offline ranking check
 
-The bundled deterministic evaluation holds out one known favorite for each of four synthetic user histories and asks whether it appears among the top five results. `py scripts/evaluate.py` produces the following figures on the current 78-title catalog:
+The bundled deterministic evaluation holds out one known favorite for each of four synthetic user histories and asks whether it appears among the top five results. After installing `requirements-mlops.txt`, `py scripts/evaluate.py` prints and logs the following figures on the current 78-title catalog:
 
 | Metric | Result | Meaning |
 | --- | ---: | --- |
@@ -60,7 +64,7 @@ These scores are a small reproducibility demonstration on synthetic histories, n
 
 ### Product and MLOps contribution
 
-The project connects the user feedback loop to a persistent profile and the recommendation endpoint, so likes, dislikes, and saved titles affect the next result set. It also has a deterministic evaluation script, live model/service monitoring, aggregate feedback metrics, a versioned input catalog, a container setup, and a documented API. GitHub Actions runs the offline evaluation and builds the Docker image on pushes and pull requests. Model artifact lineage, evaluation gates, feature-drift checks, and alerting remain future work.
+The project connects the user feedback loop to a persistent profile and the recommendation endpoint, so likes, dislikes, and saved titles affect the next result set. It includes a deterministic evaluation script with MLflow tracking, an Evidently catalog drift report, a JSON `POST /predict` endpoint, live service monitoring, aggregate feedback metrics, a versioned input catalog and Docker setup. GitHub Actions runs the evaluation, creates both reports, and builds the Docker image on pushes and pull requests. Production-grade online drift monitoring, alerting, automatic retraining, and promotion gates remain future work.
 
 ## 5. Presentation and documentation
 
@@ -68,9 +72,12 @@ The project connects the user feedback loop to a persistent profile and the reco
 - Model and API implementation: `app/`.
 - Versioned sample data: `data/movies.json`.
 - Ranking evaluation: `scripts/evaluate.py`.
+- MLOps requirements: `requirements-mlops.txt`.
+- Data drift report: `scripts/data_drift_report.py` and baseline `data/reference/movies_baseline.csv`.
+- Local MLflow tracking service: `Dockerfile.mlflow` and the `mlops` Docker Compose profile.
 - Local container setup: `Dockerfile` and `docker-compose.yml`.
 - Interactive API guide: `/docs` while the service is running.
-- Automated workflow: `.github/workflows/docker-image.yml` installs dependencies, runs the offline ranking evaluation, and builds the Docker image.
+- Automated workflow: `.github/workflows/docker-image.yml` installs MLOps dependencies, evaluates and tracks the model, writes a drift report, saves reports as artifacts, and builds the Docker image.
 - Demo walkthrough: register or log in, select a few favorite titles, inspect recommendations, filter Explore by language/genre, open a movie detail, add it to the Watchlist, then refresh and confirm it persists.
 
 ### Rubric coverage

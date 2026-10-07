@@ -6,4 +6,7 @@ data/feedback.sqlite3-shm
 data/feedback.sqlite3-wal
 data/session.key
 logs/
+mlruns/
+reports/*.html
+reports/*.json
 .env
