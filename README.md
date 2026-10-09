@@ -44,9 +44,19 @@ In another PowerShell window, log an evaluation run to the local MLflow server a
 $env:MLFLOW_TRACKING_URI = "http://127.0.0.1:5000"
 py scripts/evaluate.py
 py scripts/data_drift_report.py
+Start-Process http://localhost:5000
+Start-Process http://localhost:8000/docs
+Start-Process .\reports\data-drift-report.html
 ```
 
-Open MLflow at http://localhost:5000. The drift report is written to `reports/data-drift-report.html`. Evidently compares the current movie catalog features against the checked-in reference snapshot in `data/reference/movies_baseline.csv`; update that baseline only when you intentionally accept a new catalog version. GitHub Actions runs both reports and saves them as workflow artifacts. The Render web service keeps only its lightweight runtime dependencies; the tracking server and drift tooling run locally or in CI. Without `MLFLOW_TRACKING_URI`, the scripts use a local SQLite tracking database (`mlflow.db`) and local artifact directory (`mlartifacts/`) rather than MLflow's deprecated file-store backend.
+These tools have separate interfaces; they are not embedded in the ReelRank movie website:
+
+- **MLflow:** open http://localhost:5000 to see the `ReelRank-Recommender` experiment and logged runs.
+- **FastAPI / prediction:** open http://localhost:8000/docs, expand `POST /predict`, and use **Try it out** to submit JSON.
+- **Evidently drift report:** open `reports/data-drift-report.html` in your browser. It compares current catalog features with `data/reference/movies_baseline.csv`; update the baseline only when intentionally accepting a new catalog version.
+- **Docker:** open Docker Desktop to inspect the `recommender` and `mlflow` containers; use `docker compose ps` in the project terminal to see their status.
+
+GitHub Actions runs both reports and saves them as workflow artifacts. The Render web service keeps only its lightweight runtime dependencies; MLflow and Evidently run locally or in CI. Without `MLFLOW_TRACKING_URI`, the scripts use a local SQLite tracking database (`mlflow.db`) and local artifact directory (`mlartifacts/`) rather than MLflow's deprecated file-store backend.
 
 ## Render deployment
 
@@ -60,7 +70,7 @@ This Blueprint selects Render's free web-service plan. Free services can sleep w
 
 - `data/movies.json` is the versioned demo catalog.
 - `app/recommender.py` builds TF-IDF vectors from genres, keywords, and summaries and ranks by cosine similarity plus a modest quality prior.
-- `app/main.py` exposes health, catalog, user preference, recommendation, feedback, and aggregate metric endpoints. `POST /predict` accepts liked movie IDs and returns ranked recommendations with the serving model version. The in-app MLOps panel follows catalog → TF-IDF → ranking → feedback → MLflow/CI → Evidently drift reporting, and refreshes health and API metrics every 30 seconds.
+- `app/main.py` exposes health, catalog, user preference, recommendation, feedback, and aggregate metric endpoints. `POST /predict` accepts liked movie IDs and returns ranked recommendations with the serving model version. The movie website focuses on discovery; model tracking, drift reporting, API exploration, and containers use their separate MLflow, Evidently HTML, Swagger, and Docker interfaces.
 - Feedback is persisted in SQLite at `data/feedback.sqlite3`; latest likes shape each user's profile, dislikes are excluded, and watchlist events are retained.
 - Account registration and login use PBKDF2 password hashes and signed HttpOnly session cookies. The server creates a local signing key in `data/session.key` (ignored by Git); set `REELRANK_SECRET_KEY` to a shared secret when deploying multiple app instances.
 - Personalized preference, recommendation, Watchlist, and feedback routes require a valid session and only allow access to the signed-in account's profile. Catalog and health routes remain public.
@@ -97,7 +107,7 @@ $body = @{ liked_movie_ids = @(1, 2); limit = 5; language = "en" } | ConvertTo-J
 Invoke-RestMethod -Method Post -Uri "http://localhost:8000/predict" -ContentType "application/json" -Body $body
 ```
 
-For Python request examples, run `py scripts/evaluate.py` after installing `requirements-mlops.txt`; the API guide at http://localhost:8000/docs also lets you call `POST /predict` interactively.
+For Python request examples, run `py scripts/evaluate.py` after installing `requirements-mlops.txt`; use Swagger at http://localhost:8000/docs to call `POST /predict` interactively.
 
 After changing Python backend code, restart Uvicorn so the process loads the new routes and database schema. For development, run `py -m uvicorn app.main:app --reload` from the project directory.
 
