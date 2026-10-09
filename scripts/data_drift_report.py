@@ -2,12 +2,16 @@
 import argparse
 import json
 import os
+import sys
 from pathlib import Path
 
 import pandas as pd
 import mlflow
 from evidently import Report
 from evidently.presets import DataDriftPreset
+
+if hasattr(sys.stdout, "reconfigure"):
+    sys.stdout.reconfigure(encoding="utf-8", errors="replace")
 
 
 ROOT = Path(__file__).resolve().parents[1]
