@@ -1,16 +1,36 @@
+
+# Python virtual environments and cache
 .venv/
+venv/
 __pycache__/
 *.py[cod]
+.pytest_cache/
+
+# Local databases and session secrets
 data/feedback.sqlite3
 data/feedback.sqlite3-shm
 data/feedback.sqlite3-wal
 data/session.key
-logs/
+*.db
+*.db-shm
+*.db-wal
+
+# MovieLens dataset (download separately)
+data/ml-100k/
+data/ml-100k.zip
+
+# MLflow generated files
 mlruns/
 mlartifacts/
-mlflow.db
-mlflow.db-shm
-mlflow.db-wal
+
+# Generated reports
 reports/*.html
 reports/*.json
+
+# Environment variables and secrets
 .env
+.env.*
+!.env.example
+
+# Model artifacts are kept out of Git unless deliberately selected
+# models/*.pt
